@@ -53,7 +53,7 @@ export const sendMessageToAI = async (text: string): Promise<string> => {
 };
 
 /**
- * Generates a structured analysis report based on quiz scores
+ * Generates a structured analysis report based on quiz scores (Quantitative Input)
  */
 export const generateQuizAnalysis = async (assessmentTitle: string, scores: Record<string, number>): Promise<{
     archetype: string;
@@ -83,9 +83,9 @@ export const generateQuizAnalysis = async (assessmentTitle: string, scores: Reco
             responseSchema: {
                 type: Type.OBJECT,
                 properties: {
-                    archetype: { type: Type.STRING, description: "Short title of the personality type, e.g. 'Creative Thinker'" },
-                    summary: { type: Type.STRING, description: "2-3 sentences description of personality" },
-                    careers: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of 3 recommended job titles" },
+                    archetype: { type: Type.STRING, description: "Short title of the personality type" },
+                    summary: { type: Type.STRING, description: "2-3 sentences description" },
+                    careers: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of 3 job titles" },
                     strengths: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of 2 key strengths" }
                 }
             }
@@ -100,9 +100,81 @@ export const generateQuizAnalysis = async (assessmentTitle: string, scores: Reco
       console.error("Analysis generation failed:", error);
       return {
           archetype: "Анализ недоступен",
-          summary: "Не удалось сгенерировать описание. Попробуйте обновить страницу.",
+          summary: "Не удалось сгенерировать описание.",
           careers: ["-", "-", "-"],
           strengths: ["-", "-"]
+      };
+  }
+};
+
+/**
+ * Generates a structured analysis report AND estimated scores based on Chat History (Qualitative Input)
+ */
+export const generateChatAnalysis = async (assessmentTitle: string, messages: Message[]): Promise<{
+    scores: Record<string, number>; // Inferred scores
+    archetype: string;
+    summary: string;
+    careers: string[];
+    strengths: string[];
+}> => {
+  try {
+    // Convert messages to a readable transcript
+    const transcript = messages
+        .map(m => `${m.role === 'user' ? 'User' : 'AI Mentor'}: ${m.text}`)
+        .join('\n');
+
+    const prompt = `
+      Analyze the following conversation transcript for the assessment: "${assessmentTitle}".
+      
+      TRANSCRIPT:
+      ${transcript}
+      
+      Task:
+      1. Evaluate the User's responses.
+      2. Estimate scores (0-100) for 5-6 relevant traits/categories based on the assessment type (e.g., for Soft Skills: Communication, Leadership, Empathy, Adaptability, Problem Solving).
+      3. Identify the dominant archetype.
+      4. Write a professional summary (addressing the user as "Вы").
+      5. Suggest 3 career paths.
+      6. List 2 key strengths.
+
+      Language: Russian.
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    scores: { 
+                        type: Type.OBJECT, 
+                        description: "Key-value pairs of estimated traits and scores (0-100). Example: {'Communication': 85, 'Empathy': 70}",
+                        properties: {}, // Allow dynamic keys
+                    },
+                    archetype: { type: Type.STRING },
+                    summary: { type: Type.STRING },
+                    careers: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    strengths: { type: Type.ARRAY, items: { type: Type.STRING } }
+                }
+            }
+        }
+    });
+
+    if (response.text) {
+        return JSON.parse(response.text);
+    }
+    throw new Error("Empty response from AI");
+  } catch (error) {
+      console.error("Chat analysis failed:", error);
+      // Fallback
+      return {
+          scores: { "Participation": 100, "Completeness": 50 },
+          archetype: "Данные не обработаны",
+          summary: "Произошла ошибка при анализе диалога.",
+          careers: [],
+          strengths: []
       };
   }
 };

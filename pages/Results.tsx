@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { RadarChart } from '../components/RadarChart';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { Answer, ChartDataPoint } from '../types';
+import { Answer, ChartDataPoint, Message } from '../types';
 import { getAssessmentById } from '../services/assessmentData';
-import { generateQuizAnalysis } from '../services/geminiService';
+import { generateQuizAnalysis, generateChatAnalysis } from '../services/geminiService';
 
 interface ResultState {
     archetype: string;
@@ -22,69 +22,99 @@ export const Results: React.FC = () => {
 
   useEffect(() => {
     const processResults = async () => {
-        const stateAnswers = location.state?.answers as Answer[];
-        const assessmentId = location.state?.assessmentId || id;
+        const state = location.state || {};
+        const assessmentId = state.assessmentId || id;
+        const assessmentType = state.type; // 'quiz' or 'chat'
+        const assessment = getAssessmentById(assessmentId || '');
         
-        if (!stateAnswers || stateAnswers.length === 0) {
-            // Fallback for direct link access (Demo data)
-            setChartData([
-                { subject: 'Реалистичный', A: 80, fullMark: 100 },
-                { subject: 'Интеллектуальный', A: 90, fullMark: 100 },
-                { subject: 'Артистичный', A: 40, fullMark: 100 },
-                { subject: 'Социальный', A: 60, fullMark: 100 },
-                { subject: 'Предприимчивый', A: 50, fullMark: 100 },
-                { subject: 'Конвенциональный', A: 70, fullMark: 100 },
-            ]);
-            setResult({
-                archetype: "Демо-режим",
-                summary: "Это демонстрационные данные, так как тест не был пройден. Пройдите тест для получения реального результата.",
-                careers: ["Data Scientist", "Инженер", "Аналитик"],
-                strengths: ["Логика", "Системность"]
+        if (assessment) setAssessmentTitle(assessment.title);
+
+        // --- PATH A: QUIZ RESULTS (Structured Answers) ---
+        if (state.answers && state.answers.length > 0) {
+            const stateAnswers = state.answers as Answer[];
+            
+            // 1. Calculate Scores locally
+            const scores: Record<string, number> = {};
+            const counts: Record<string, number> = {};
+            const maxPerQuestion = 5;
+
+            stateAnswers.forEach(a => {
+                scores[a.category] = (scores[a.category] || 0) + Number(a.value);
+                counts[a.category] = (counts[a.category] || 0) + 1;
             });
+
+            const normalizedScores: ChartDataPoint[] = Object.keys(scores).map(category => {
+                const totalScore = scores[category];
+                const maxPossible = counts[category] * maxPerQuestion;
+                return {
+                    subject: category,
+                    A: Math.round((totalScore / maxPossible) * 100),
+                    fullMark: 100
+                };
+            });
+            setChartData(normalizedScores);
+
+            // 2. Call AI for Text Analysis
+            const scoresMap = normalizedScores.reduce((acc, curr) => {
+                acc[curr.subject] = curr.A;
+                return acc;
+            }, {} as Record<string, number>);
+
+            try {
+                const aiData = await generateQuizAnalysis(assessment ? assessment.title : 'Assessment', scoresMap);
+                setResult(aiData);
+            } catch (e) {
+                console.error(e);
+            }
             setLoading(false);
             return;
         }
 
-        // 1. Calculate Scores
-        const scores: Record<string, number> = {};
-        const counts: Record<string, number> = {};
-        const maxPerQuestion = 5; // Likert scale max
-
-        stateAnswers.forEach(a => {
-            scores[a.category] = (scores[a.category] || 0) + Number(a.value);
-            counts[a.category] = (counts[a.category] || 0) + 1;
-        });
-
-        const normalizedScores: ChartDataPoint[] = Object.keys(scores).map(category => {
-            const totalScore = scores[category];
-            const maxPossible = counts[category] * maxPerQuestion;
-            return {
-                subject: category,
-                A: Math.round((totalScore / maxPossible) * 100),
-                fullMark: 100
-            };
-        });
-
-        setChartData(normalizedScores);
-
-        // 2. Get Assessment Info
-        const assessment = getAssessmentById(assessmentId || '');
-        if (assessment) setAssessmentTitle(assessment.title);
-
-        // 3. Call AI for Analysis
-        const scoresMap = normalizedScores.reduce((acc, curr) => {
-            acc[curr.subject] = curr.A;
-            return acc;
-        }, {} as Record<string, number>);
-
-        try {
-            const aiData = await generateQuizAnalysis(assessment ? assessment.title : 'Assessment', scoresMap);
-            setResult(aiData);
-        } catch (e) {
-            console.error(e);
-        } finally {
+        // --- PATH B: CHAT RESULTS (Unstructured Messages) ---
+        if (state.messages && state.messages.length > 0) {
+            const messages = state.messages as Message[];
+            
+            try {
+                // Call specialized Chat Analysis which returns BOTH scores and text
+                const aiData = await generateChatAnalysis(assessment ? assessment.title : 'Chat Assessment', messages);
+                
+                // Map AI generated scores to Chart Data
+                const generatedChartData: ChartDataPoint[] = Object.keys(aiData.scores || {}).map(key => ({
+                    subject: key,
+                    A: aiData.scores[key],
+                    fullMark: 100
+                }));
+                
+                setChartData(generatedChartData);
+                setResult({
+                    archetype: aiData.archetype,
+                    summary: aiData.summary,
+                    careers: aiData.careers,
+                    strengths: aiData.strengths
+                });
+            } catch (e) {
+                console.error("Chat analysis failed", e);
+            }
             setLoading(false);
+            return;
         }
+
+        // --- PATH C: DIRECT LINK / DEMO DATA ---
+        setChartData([
+            { subject: 'Реалистичный', A: 80, fullMark: 100 },
+            { subject: 'Интеллектуальный', A: 90, fullMark: 100 },
+            { subject: 'Артистичный', A: 40, fullMark: 100 },
+            { subject: 'Социальный', A: 60, fullMark: 100 },
+            { subject: 'Предприимчивый', A: 50, fullMark: 100 },
+            { subject: 'Конвенциональный', A: 70, fullMark: 100 },
+        ]);
+        setResult({
+            archetype: "Демо-режим",
+            summary: "Это демонстрационные данные. Пройдите тест или диалог с AI для получения реального результата.",
+            careers: ["Data Scientist", "Инженер", "Аналитик"],
+            strengths: ["Логика", "Системность"]
+        });
+        setLoading(false);
     };
 
     processResults();
@@ -94,7 +124,10 @@ export const Results: React.FC = () => {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#131b20]">
               <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-primary animate-spin mb-4"></div>
-              <p className="text-slate-500 animate-pulse">ИИ анализирует ваши ответы...</p>
+              <p className="text-slate-500 animate-pulse text-center">
+                  ИИ анализирует ваши ответы...<br/>
+                  <span className="text-xs">Это может занять несколько секунд</span>
+              </p>
           </div>
       );
   }
@@ -165,7 +198,11 @@ export const Results: React.FC = () => {
                         <span className="material-symbols-outlined">info</span>
                     </button>
                 </div>
-                <RadarChart data={chartData} />
+                {chartData.length > 0 ? (
+                    <RadarChart data={chartData} />
+                ) : (
+                    <div className="h-[300px] flex items-center justify-center text-slate-400">Нет данных для графика</div>
+                )}
             </div>
             
             {/* Key Insight */}
@@ -198,7 +235,7 @@ export const Results: React.FC = () => {
                 {chartData.map((item, i) => (
                     <div key={i} className="bg-white dark:bg-[#1c262e] border border-slate-200 dark:border-[#283843] rounded-xl p-5 hover:border-primary/40 transition-colors group">
                         <div className="flex justify-between items-center mb-3">
-                            <h4 className="text-slate-900 dark:text-white font-bold">{item.subject}</h4>
+                            <h4 className="text-slate-900 dark:text-white font-bold truncate pr-2">{item.subject}</h4>
                             <span className={`font-black text-lg ${item.A > 70 ? 'text-primary' : 'text-slate-700 dark:text-white'}`}>{item.A}%</span>
                         </div>
                         <div className="w-full bg-slate-100 dark:bg-[#283843] h-2 rounded-full mb-3 overflow-hidden">
