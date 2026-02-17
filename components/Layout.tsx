@@ -24,9 +24,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex md:hidden items-center justify-between px-4 py-3 bg-white dark:bg-[#131b20] border-b border-slate-200 dark:border-[#283843] shrink-0 z-30">
             <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 text-primary">
-                    <span className="material-symbols-outlined text-xl">explore</span>
+                    <span className="material-symbols-outlined text-xl">school</span>
                 </div>
-                <span className="font-bold text-lg text-slate-900 dark:text-white">LifeCompass</span>
+                <span className="font-bold text-lg text-slate-900 dark:text-white">LifeCompass Uni</span>
             </div>
             <button
                 onClick={() => setIsSidebarOpen(true)}

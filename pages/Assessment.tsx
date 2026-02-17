@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import Markdown from 'react-markdown';
-import { startChatSession, sendMessageToAI } from '../services/geminiService';
+import { startChatSession, sendMessageToAI, isApiConfigured } from '../services/geminiService';
 import { getAssessmentById } from '../services/assessmentData';
 import { AssessmentConfig, Message, Answer } from '../types';
 
@@ -9,11 +9,12 @@ export const Assessment: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [assessment, setAssessment] = useState<AssessmentConfig | null>(null);
-  
+
   // -- CHAT STATE --
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -28,9 +29,21 @@ export const Assessment: React.FC = () => {
         const data = getAssessmentById(id);
         if (data) {
           setAssessment(data);
-          
+
           if (data.type === 'chat') {
-            // Start Gemini Session ONLY for chat
+            if (!isApiConfigured()) {
+              setApiError('Для AI-диалогов необходимо указать GEMINI_API_KEY в файле .env');
+              if (data.initialMessage) {
+                setMessages([{
+                  id: 'init-1',
+                  role: 'model',
+                  text: data.initialMessage,
+                  timestamp: new Date()
+                }]);
+              }
+              return;
+            }
+
             try {
               await startChatSession('gemini-3-flash-preview', data.systemInstruction || '');
               if (data.initialMessage) {
@@ -41,8 +54,21 @@ export const Assessment: React.FC = () => {
                   timestamp: new Date()
                 }]);
               }
-            } catch (e) {
+            } catch (e: any) {
               console.error(e);
+              if (e?.message === 'API_KEY_MISSING') {
+                setApiError('Для AI-диалогов необходимо указать GEMINI_API_KEY в файле .env');
+              } else {
+                setApiError('Не удалось подключиться к AI. Проверьте интернет-соединение и API-ключ.');
+              }
+              if (data.initialMessage) {
+                setMessages([{
+                  id: 'init-1',
+                  role: 'model',
+                  text: data.initialMessage,
+                  timestamp: new Date()
+                }]);
+              }
             }
           }
         }
@@ -56,10 +82,10 @@ export const Assessment: React.FC = () => {
   useEffect(() => { if (assessment?.type === 'chat') scrollToBottom(); }, [messages, isTyping, assessment]);
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || apiError) return;
     const userText = inputValue.trim();
     setInputValue('');
-    
+
     setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text: userText, timestamp: new Date() }]);
     setIsTyping(true);
 
@@ -68,13 +94,13 @@ export const Assessment: React.FC = () => {
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: responseText, timestamp: new Date() }]);
     } catch (error) {
       console.error(error);
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: 'Произошла ошибка. Попробуйте ещё раз.', timestamp: new Date() }]);
     } finally {
       setIsTyping(false);
     }
   };
 
   const handleFinishChat = () => {
-      // Send messages history to results page for analysis
       navigate(`/results/${id}`, { state: { messages: messages, assessmentId: id, type: 'chat' } });
   };
 
@@ -88,22 +114,17 @@ export const Assessment: React.FC = () => {
   // -- QUIZ HANDLERS --
   const handleQuizAnswer = (value: number | string, category: string) => {
     if (!assessment?.questions) return;
-    
+
     const questionId = assessment.questions[currentQuestionIndex].id;
     const newAnswer: Answer = { questionId, value, category };
-    
-    // Save answer
-    // Remove previous answer for this question if exists, then add new
+
     const filteredAnswers = answers.filter(a => a.questionId !== questionId);
     const updatedAnswers = [...filteredAnswers, newAnswer];
     setAnswers(updatedAnswers);
 
-    // Next question or Finish
     if (currentQuestionIndex < assessment.questions.length - 1) {
       setTimeout(() => setCurrentQuestionIndex(prev => prev + 1), 250);
     } else {
-        // FINISH QUIZ
-        // Pass answers to results page
         setTimeout(() => {
              navigate(`/results/${id}`, { state: { answers: updatedAnswers, assessmentId: id, type: 'quiz' } });
         }, 300);
@@ -128,17 +149,18 @@ export const Assessment: React.FC = () => {
                       {assessment.title}
                   </h1>
                   <div className="flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${assessment.type === 'chat' ? 'bg-green-500' : 'bg-blue-500'}`}></span>
+                      <span className={`w-2 h-2 rounded-full ${assessment.type === 'chat' ? (apiError ? 'bg-red-500' : 'bg-green-500') : 'bg-blue-500'}`}></span>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
-                          {assessment.type === 'chat' ? 'AI-ассистент' : `Вопрос ${currentQuestionIndex + 1} из ${assessment.questions?.length}`}
+                          {assessment.type === 'chat'
+                            ? (apiError ? 'Не подключено' : 'AI-ассистент')
+                            : `Вопрос ${currentQuestionIndex + 1} из ${assessment.questions?.length}`}
                       </span>
                   </div>
               </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Show Finish button only in chat mode and if there are messages */}
             {assessment.type === 'chat' && messages.length > 2 && (
-                 <button 
+                 <button
                     onClick={handleFinishChat}
                     className="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-bold bg-green-500 text-white hover:bg-green-600 transition-colors shadow-sm"
                  >
@@ -160,9 +182,21 @@ export const Assessment: React.FC = () => {
     return (
       <div className="flex flex-col h-full bg-[#f0f2f5] dark:bg-[#0b141a] overflow-hidden relative">
         <Header />
+
+        {apiError && (
+          <div className="flex-none bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-4 py-3">
+            <div className="max-w-3xl mx-auto flex items-center gap-3">
+              <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-xl shrink-0">warning</span>
+              <div className="flex-1">
+                <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">{apiError}</p>
+                <p className="text-amber-600 dark:text-amber-400 text-xs mt-0.5">Создайте файл <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">.env</code> с переменной <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">GEMINI_API_KEY=ваш_ключ</code></p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <main className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
           <div className="max-w-3xl mx-auto flex flex-col gap-4">
-             {/* Info Bubble */}
              <div className="flex justify-center my-4">
                 <span className="bg-slate-200 dark:bg-[#1f2c34] text-slate-600 dark:text-slate-400 text-xs px-3 py-1 rounded-full shadow-sm text-center">
                     {assessment.description} <br/>
@@ -179,7 +213,7 @@ export const Assessment: React.FC = () => {
                             {msg.role === 'user' ? (
                               <div className="whitespace-pre-wrap">{msg.text}</div>
                             ) : (
-                              <Markdown 
+                              <Markdown
                                 className="prose dark:prose-invert max-w-none prose-p:my-1.5 prose-headings:my-2 prose-headings:text-slate-900 dark:prose-headings:text-white prose-ul:my-1 prose-ul:pl-4 prose-li:my-0.5 prose-blockquote:my-2 prose-blockquote:border-primary/50 prose-blockquote:bg-slate-50 dark:prose-blockquote:bg-slate-800/50 prose-blockquote:not-italic prose-blockquote:px-3 prose-blockquote:py-1 prose-blockquote:rounded-r prose-strong:text-slate-900 dark:prose-strong:text-white [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
                               >
                                 {msg.text}
@@ -205,15 +239,14 @@ export const Assessment: React.FC = () => {
         </main>
         <footer className="flex-none p-4 bg-white dark:bg-[#131b20] border-t border-slate-200 dark:border-[#283843]">
            <div className="max-w-3xl mx-auto flex flex-col gap-3">
-            {/* Mobile Finish Button */}
             {messages.length > 2 && (
                 <button onClick={handleFinishChat} className="md:hidden w-full py-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-sm font-bold border border-green-200 dark:border-green-800">
                     Завершить диагностику и получить результат
                 </button>
             )}
             <div className="relative flex items-end gap-2">
-                <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ваш ответ..." className="w-full bg-slate-100 dark:bg-[#1f2c34] text-slate-900 dark:text-white rounded-2xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent" disabled={isTyping} />
-                <button onClick={handleSendMessage} disabled={!inputValue.trim() || isTyping} className={`h-[50px] w-[50px] flex items-center justify-center rounded-full transition-all shrink-0 ${inputValue.trim() && !isTyping ? 'bg-primary text-white hover:bg-primary-hover shadow-lg' : 'bg-slate-200 dark:bg-[#283843] text-slate-400 cursor-not-allowed'}`}><span className="material-symbols-outlined">send</span></button>
+                <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder={apiError ? "AI недоступен — настройте API ключ" : "Ваш ответ..."} className={`w-full bg-slate-100 dark:bg-[#1f2c34] text-slate-900 dark:text-white rounded-2xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent ${apiError ? 'opacity-60' : ''}`} disabled={isTyping || !!apiError} />
+                <button onClick={handleSendMessage} disabled={!inputValue.trim() || isTyping || !!apiError} className={`h-[50px] w-[50px] flex items-center justify-center rounded-full transition-all shrink-0 ${inputValue.trim() && !isTyping && !apiError ? 'bg-primary text-white hover:bg-primary-hover shadow-lg' : 'bg-slate-200 dark:bg-[#283843] text-slate-400 cursor-not-allowed'}`}><span className="material-symbols-outlined">send</span></button>
             </div>
           </div>
         </footer>
@@ -228,8 +261,7 @@ export const Assessment: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-background-light dark:bg-background-dark">
       <Header />
-      
-      {/* Progress Bar */}
+
       <div className="w-full h-1.5 bg-slate-200 dark:bg-[#1f2c34]">
           <div className="h-full bg-primary transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
       </div>
@@ -238,7 +270,6 @@ export const Assessment: React.FC = () => {
         <div className="w-full max-w-2xl">
           {question && (
             <div className="flex flex-col gap-8 animate-fadeIn">
-              {/* Question Card */}
               <div className="text-center flex flex-col gap-4">
                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     {question.category}
@@ -248,7 +279,6 @@ export const Assessment: React.FC = () => {
                  </h2>
               </div>
 
-              {/* Options */}
               <div className="grid grid-cols-1 gap-3">
                  {question.options?.map((opt) => (
                     <button
@@ -273,10 +303,9 @@ export const Assessment: React.FC = () => {
         </div>
       </main>
 
-      {/* Quiz Footer controls */}
       <footer className="p-6 flex justify-center pb-10">
          <div className="flex gap-2">
-             <button 
+             <button
                 onClick={() => currentQuestionIndex > 0 && setCurrentQuestionIndex(prev => prev - 1)}
                 disabled={currentQuestionIndex === 0}
                 className="px-6 py-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-[#1f2c34] disabled:opacity-50 transition-colors"

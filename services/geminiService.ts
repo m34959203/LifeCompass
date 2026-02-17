@@ -1,30 +1,38 @@
-import { GoogleGenAI, ChatSession, Type } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { Message } from '../types';
 
 // Initialize the SDK
 // API KEY is strictly from process.env.API_KEY as per instructions
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = process.env.API_KEY || '';
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-let chatSession: ChatSession | null = null;
+let chatSession: any = null;
+
+/** Check if the Gemini API is configured */
+export const isApiConfigured = (): boolean => {
+  return !!apiKey && !!ai;
+};
 
 /**
  * Starts a new chat session with a specific persona (System Instruction)
  */
 export const startChatSession = async (modelName: string, systemInstruction: string) => {
+  if (!ai) {
+    throw new Error("API_KEY_MISSING");
+  }
+
   try {
-    // Determine model based on complexity, strictly adhering to guidelines
-    // Using 'gemini-3-flash-preview' for responsive chat interaction
-    const modelId = 'gemini-3-flash-preview'; 
+    const modelId = 'gemini-3-flash-preview';
 
     chatSession = ai.chats.create({
       model: modelId,
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.7, // Slightly creative/friendly
+        temperature: 0.7,
       },
-      history: [] // Start fresh
+      history: []
     });
-    
+
     return chatSession;
   } catch (error) {
     console.error("Failed to start chat session:", error);
@@ -44,7 +52,7 @@ export const sendMessageToAI = async (text: string): Promise<string> => {
     const result = await chatSession.sendMessage({
       message: text
     });
-    
+
     return result.text;
   } catch (error) {
     console.error("Error sending message to AI:", error);
@@ -61,11 +69,20 @@ export const generateQuizAnalysis = async (assessmentTitle: string, scores: Reco
     careers: string[];
     strengths: string[];
 }> => {
+  if (!ai) {
+    return {
+      archetype: "API не настроен",
+      summary: "Для получения AI-анализа необходимо указать GEMINI_API_KEY в файле .env. Без него доступны только локальные результаты (баллы по категориям).",
+      careers: ["Настройте API ключ", "для получения", "рекомендаций"],
+      strengths: ["Баллы рассчитаны", "локально"]
+    };
+  }
+
   try {
     const prompt = `
       Analyze the following ${assessmentTitle} results (0-100 scale per category):
       ${JSON.stringify(scores)}
-      
+
       Task:
       1. Identify the dominant personality archetype.
       2. Write a psychological summary (addressing the user as "Вы").
@@ -100,7 +117,7 @@ export const generateQuizAnalysis = async (assessmentTitle: string, scores: Reco
       console.error("Analysis generation failed:", error);
       return {
           archetype: "Анализ недоступен",
-          summary: "Не удалось сгенерировать описание.",
+          summary: "Не удалось сгенерировать описание. Проверьте подключение к интернету и API-ключ.",
           careers: ["-", "-", "-"],
           strengths: ["-", "-"]
       };
@@ -111,24 +128,33 @@ export const generateQuizAnalysis = async (assessmentTitle: string, scores: Reco
  * Generates a structured analysis report AND estimated scores based on Chat History (Qualitative Input)
  */
 export const generateChatAnalysis = async (assessmentTitle: string, messages: Message[]): Promise<{
-    scores: Record<string, number>; // Inferred scores
+    scores: Record<string, number>;
     archetype: string;
     summary: string;
     careers: string[];
     strengths: string[];
 }> => {
+  if (!ai) {
+    return {
+      scores: {},
+      archetype: "API не настроен",
+      summary: "Для анализа диалога необходимо указать GEMINI_API_KEY в файле .env.",
+      careers: [],
+      strengths: []
+    };
+  }
+
   try {
-    // Convert messages to a readable transcript
     const transcript = messages
         .map(m => `${m.role === 'user' ? 'User' : 'AI Mentor'}: ${m.text}`)
         .join('\n');
 
     const prompt = `
       Analyze the following conversation transcript for the assessment: "${assessmentTitle}".
-      
+
       TRANSCRIPT:
       ${transcript}
-      
+
       Task:
       1. Evaluate the User's responses.
       2. Estimate scores (0-100) for 5-6 relevant traits/categories based on the assessment type (e.g., for Soft Skills: Communication, Leadership, Empathy, Adaptability, Problem Solving).
@@ -148,10 +174,10 @@ export const generateChatAnalysis = async (assessmentTitle: string, messages: Me
             responseSchema: {
                 type: Type.OBJECT,
                 properties: {
-                    scores: { 
-                        type: Type.OBJECT, 
+                    scores: {
+                        type: Type.OBJECT,
                         description: "Key-value pairs of estimated traits and scores (0-100). Example: {'Communication': 85, 'Empathy': 70}",
-                        properties: {}, // Allow dynamic keys
+                        properties: {},
                     },
                     archetype: { type: Type.STRING },
                     summary: { type: Type.STRING },
@@ -168,18 +194,12 @@ export const generateChatAnalysis = async (assessmentTitle: string, messages: Me
     throw new Error("Empty response from AI");
   } catch (error) {
       console.error("Chat analysis failed:", error);
-      // Fallback
       return {
           scores: { "Participation": 100, "Completeness": 50 },
           archetype: "Данные не обработаны",
-          summary: "Произошла ошибка при анализе диалога.",
+          summary: "Произошла ошибка при анализе диалога. Проверьте подключение к интернету.",
           careers: [],
           strengths: []
       };
   }
-};
-
-// Legacy function kept to prevent compile errors
-export const generateAnalysis = async (answers: any[]): Promise<string> => {
-    return "Analysis deprecated in Chat Mode.";
 };
