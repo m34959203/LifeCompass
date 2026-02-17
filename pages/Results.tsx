@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { RadarChart } from '../components/RadarChart';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { Answer, ChartDataPoint } from '../types';
 import { getAssessmentById } from '../services/assessmentData';
 import { generateQuizAnalysis } from '../services/geminiService';
+import { saveTestResult, getResultById, generateResultId, TestResult } from '../services/storageService';
+import { useToast } from '../components/Toast';
 
 interface ResultState {
     archetype: string;
@@ -15,17 +17,57 @@ interface ResultState {
 export const Results: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [result, setResult] = useState<ResultState | null>(null);
   const [loading, setLoading] = useState(true);
   const [assessmentTitle, setAssessmentTitle] = useState("Результаты");
+  const [savedResultId, setSavedResultId] = useState<string | null>(null);
 
   useEffect(() => {
     const processResults = async () => {
         const stateAnswers = location.state?.answers as Answer[];
         const assessmentId = location.state?.assessmentId || id;
-        
+        const existingResultId = location.state?.savedResultId as string | undefined;
+
+        // Check if we're viewing a saved result
+        if (existingResultId) {
+            const saved = getResultById(existingResultId);
+            if (saved) {
+                setChartData(saved.scores);
+                setResult({
+                    archetype: saved.archetype,
+                    summary: saved.summary,
+                    careers: saved.careers,
+                    strengths: saved.strengths,
+                });
+                setAssessmentTitle(saved.assessmentTitle);
+                setSavedResultId(saved.id);
+                setLoading(false);
+                return;
+            }
+        }
+
         if (!stateAnswers || stateAnswers.length === 0) {
+            // Try to load latest result for this assessment from storage
+            const { getAllResults } = await import('../services/storageService');
+            const savedResults = getAllResults().filter(r => r.assessmentId === assessmentId);
+            if (savedResults.length > 0) {
+                const latest = savedResults[0];
+                setChartData(latest.scores);
+                setResult({
+                    archetype: latest.archetype,
+                    summary: latest.summary,
+                    careers: latest.careers,
+                    strengths: latest.strengths,
+                });
+                setAssessmentTitle(latest.assessmentTitle);
+                setSavedResultId(latest.id);
+                setLoading(false);
+                return;
+            }
+
             // Fallback for direct link access (Demo data)
             setChartData([
                 { subject: 'Реалистичный', A: 80, fullMark: 100 },
@@ -48,7 +90,7 @@ export const Results: React.FC = () => {
         // 1. Calculate Scores
         const scores: Record<string, number> = {};
         const counts: Record<string, number> = {};
-        const maxPerQuestion = 5; // Likert scale max
+        const maxPerQuestion = 5;
 
         stateAnswers.forEach(a => {
             scores[a.category] = (scores[a.category] || 0) + Number(a.value);
@@ -80,6 +122,29 @@ export const Results: React.FC = () => {
         try {
             const aiData = await generateQuizAnalysis(assessment ? assessment.title : 'Assessment', scoresMap);
             setResult(aiData);
+
+            // 4. Save result to localStorage
+            if (assessment && aiData) {
+                const resultId = generateResultId();
+                const testResult: TestResult = {
+                    id: resultId,
+                    assessmentId: assessment.id,
+                    assessmentTitle: assessment.title,
+                    assessmentIcon: assessment.icon || 'quiz',
+                    assessmentGradient: assessment.gradient || 'from-slate-500 to-slate-600',
+                    type: assessment.type,
+                    date: new Date().toISOString(),
+                    scores: normalizedScores,
+                    archetype: aiData.archetype,
+                    summary: aiData.summary,
+                    careers: aiData.careers,
+                    strengths: aiData.strengths,
+                    answers: stateAnswers,
+                };
+                saveTestResult(testResult);
+                setSavedResultId(resultId);
+                showToast('Результат сохранён в историю', 'success');
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -106,7 +171,7 @@ export const Results: React.FC = () => {
         <div className="flex items-center gap-2 text-[#99b1c2] text-sm">
           <Link to="/dashboard">Главная</Link>
           <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-          <span>Тесты</span>
+          <Link to="/history">История</Link>
           <span className="material-symbols-outlined text-[16px]">chevron_right</span>
           <span className="text-slate-900 dark:text-white">Результаты</span>
         </div>
@@ -122,13 +187,16 @@ export const Results: React.FC = () => {
       <div className="bg-white dark:bg-[#1c262e] rounded-xl overflow-hidden border border-slate-200 dark:border-[#283843] shadow-lg mb-8">
         <div className="flex flex-col lg:flex-row">
           {/* Left Visual */}
-          <div className="lg:w-1/3 relative min-h-[250px] lg:min-h-full bg-slate-100 dark:bg-[#151c22]">
-            <div className="absolute inset-0 bg-cover bg-center opacity-80" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBecspg9H6MVhDrJ4AeoCFFb3pv66Iy8cuT7TZ6E34TZuf9EZQnuRVSJrA27bQHS5q_G8D0nwpuq_rYWxUlJO8H3tdpvK0OFl7Wbss9UUnCiV_5PCI85nK3CzcGC-0h7d2pRQpqGDfeq4Bq1j2wjTskAskZziFZBCdM-TiNN6VY7uyazIc9UBEm09u2FcpgCXn5_3OSnuKSQHrkD5Ay84dMzk4Ctw48rZoBw-HTbHEyGw4T_81TuEt-0gi5v_qIWO6w_Z4JgFcblG4')" }}></div>
-            <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-white dark:from-[#1c262e] via-white/50 dark:via-[#1c262e]/50 to-transparent"></div>
-            <div className="absolute bottom-6 left-6 right-6">
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-3 border border-primary/30">
-                    Архетип
+          <div className="lg:w-1/3 relative min-h-[250px] lg:min-h-full bg-gradient-to-br from-primary/20 via-slate-100 to-emerald-500/20 dark:from-primary/10 dark:via-[#151c22] dark:to-emerald-900/10">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-5xl text-primary">psychology</span>
+                </div>
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase tracking-wider border border-primary/30">
+                  Архетип
                 </span>
+              </div>
             </div>
           </div>
           {/* Right Content */}
@@ -141,7 +209,10 @@ export const Results: React.FC = () => {
                 {result?.summary}
             </p>
             <div className="flex flex-wrap gap-4">
-                <button className="flex items-center justify-center gap-2 rounded-xl h-12 px-6 bg-primary hover:bg-primary/90 transition-colors text-white font-bold shadow-[0_0_20px_rgba(46,135,194,0.3)]">
+                <button
+                    onClick={() => showToast('Экспорт в PDF будет доступен в следующем обновлении', 'info')}
+                    className="flex items-center justify-center gap-2 rounded-xl h-12 px-6 bg-primary hover:bg-primary/90 transition-colors text-white font-bold shadow-[0_0_20px_rgba(46,135,194,0.3)]"
+                >
                     <span className="material-symbols-outlined">download</span>
                     <span>Скачать PDF</span>
                 </button>
@@ -161,13 +232,10 @@ export const Results: React.FC = () => {
             <div className="bg-white dark:bg-[#1c262e] rounded-xl p-6 border border-slate-200 dark:border-[#283843]">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-slate-900 dark:text-white text-xl font-bold">Карта компетенций</h3>
-                    <button className="text-primary hover:text-slate-900 dark:hover:text-white transition-colors">
-                        <span className="material-symbols-outlined">info</span>
-                    </button>
                 </div>
                 <RadarChart data={chartData} />
             </div>
-            
+
             {/* Key Insight */}
             <div className="bg-gradient-to-br from-[#2e87c2]/10 to-slate-50 dark:from-[#2e87c2]/20 dark:to-[#1c262e] border border-primary/20 rounded-xl p-6">
                 <div className="flex gap-4">
@@ -193,7 +261,7 @@ export const Results: React.FC = () => {
             <div className="flex justify-between items-end">
                 <h3 className="text-slate-900 dark:text-white text-2xl font-bold">Детальный анализ черт</h3>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {chartData.map((item, i) => (
                     <div key={i} className="bg-white dark:bg-[#1c262e] border border-slate-200 dark:border-[#283843] rounded-xl p-5 hover:border-primary/40 transition-colors group">

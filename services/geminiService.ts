@@ -1,11 +1,10 @@
-import { GoogleGenAI, ChatSession, Type } from "@google/genai";
-import { Message } from '../types';
+import { GoogleGenAI, Type } from "@google/genai";
 
 // Initialize the SDK
 // API KEY is strictly from process.env.API_KEY as per instructions
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-let chatSession: ChatSession | null = null;
+let chatSession: any = null;
 
 /**
  * Starts a new chat session with a specific persona (System Instruction)
@@ -107,7 +106,3 @@ export const generateQuizAnalysis = async (assessmentTitle: string, scores: Reco
   }
 };
 
-// Legacy function kept to prevent compile errors
-export const generateAnalysis = async (answers: any[]): Promise<string> => {
-    return "Analysis deprecated in Chat Mode.";
-};

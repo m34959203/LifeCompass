@@ -1,136 +1,269 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { getAllResults, deleteResult, clearAllResults, TestResult } from '../services/storageService';
+import { useToast } from '../components/Toast';
+
+type FilterType = 'all' | 'quiz' | 'chat';
+
+const formatDate = (isoString: string): string => {
+  const date = new Date(isoString);
+  return date.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
+const formatTime = (isoString: string): string => {
+  const date = new Date(isoString);
+  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+};
+
+const getTopScore = (result: TestResult): { category: string; value: number } => {
+  if (!result.scores || result.scores.length === 0) return { category: '-', value: 0 };
+  const sorted = [...result.scores].sort((a, b) => b.A - a.A);
+  return { category: sorted[0].subject, value: sorted[0].A };
+};
+
+const resultColorMap: Record<number, { color: string; bg: string; dot: string }> = {
+  0: { color: 'text-emerald-500', bg: 'bg-emerald-500/10', dot: 'bg-emerald-500' },
+  1: { color: 'text-blue-500', bg: 'bg-blue-500/10', dot: 'bg-blue-500' },
+  2: { color: 'text-purple-500', bg: 'bg-purple-500/10', dot: 'bg-purple-500' },
+  3: { color: 'text-orange-500', bg: 'bg-orange-500/10', dot: 'bg-orange-500' },
+  4: { color: 'text-red-500', bg: 'bg-red-500/10', dot: 'bg-red-500' },
+};
 
 export const History: React.FC = () => {
+  const { showToast } = useToast();
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [results, setResults] = useState<TestResult[]>(getAllResults);
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
+
+  const filteredResults = useMemo(() => {
+    if (filter === 'all') return results;
+    return results.filter(r => r.type === filter);
+  }, [results, filter]);
+
+  const stats = useMemo(() => {
+    const total = results.length;
+    const quizCount = results.filter(r => r.type === 'quiz').length;
+    const chatCount = results.filter(r => r.type === 'chat').length;
+    const avgScore = total > 0
+      ? Math.round(results.reduce((sum, r) => {
+          const top = getTopScore(r);
+          return sum + top.value;
+        }, 0) / total)
+      : 0;
+    return { total, quizCount, chatCount, avgScore };
+  }, [results]);
+
+  const handleDelete = (id: string) => {
+    deleteResult(id);
+    setResults(getAllResults());
+    showToast('Результат удалён', 'success');
+  };
+
+  const handleClearAll = () => {
+    clearAllResults();
+    setResults([]);
+    setShowConfirmClear(false);
+    showToast('Вся история очищена', 'success');
+  };
+
   return (
     <div className="mx-auto max-w-[1200px] px-4 md:px-6 py-8">
       {/* Title */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
         <div className="flex flex-col gap-2">
-            <h1 className="text-slate-900 dark:text-white text-3xl md:text-4xl font-black leading-tight tracking-[-0.033em]">История тестов и тренды</h1>
-            <p className="text-slate-500 dark:text-text-secondary text-base font-normal max-w-2xl">Отслеживайте свое психологическое состояние и профессиональный рост с помощью ИИ-аналитики.</p>
+            <h1 className="text-slate-900 dark:text-white text-3xl md:text-4xl font-black leading-tight tracking-[-0.033em]">
+              История тестов
+            </h1>
+            <p className="text-slate-500 dark:text-text-secondary text-base font-normal max-w-2xl">
+              Отслеживайте свои результаты и прогресс. Все пройденные тесты сохраняются автоматически.
+            </p>
         </div>
-        <button className="bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20">
+        <Link
+          to="/dashboard"
+          className="bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
+        >
             <span className="material-symbols-outlined text-[20px]">add</span>
             Новый тест
-        </button>
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-        {/* Main Chart */}
-        <div className="lg:col-span-2 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl p-6 shadow-sm relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-            <div className="flex justify-between items-start mb-6 relative z-10">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-slate-900 dark:text-white text-lg font-bold">Динамика благополучия</h3>
-                        <span className="bg-primary/20 text-primary text-xs font-semibold px-2 py-0.5 rounded-full">Бета</span>
-                    </div>
-                    <p className="text-slate-500 dark:text-text-secondary text-sm">Оценка ментальной устойчивости за 60 дней</p>
-                </div>
-                <div className="flex bg-slate-100 dark:bg-background-dark rounded-lg p-1 border border-slate-200 dark:border-border-dark">
-                    <button className="px-3 py-1.5 rounded text-xs font-medium bg-primary text-white shadow-sm transition-all">Устойчивость</button>
-                    <button className="px-3 py-1.5 rounded text-xs font-medium text-slate-500 dark:text-text-secondary hover:text-slate-900 dark:hover:text-white transition-all">Стресс</button>
-                    <button className="px-3 py-1.5 rounded text-xs font-medium text-slate-500 dark:text-text-secondary hover:text-slate-900 dark:hover:text-white transition-all">Фокус</button>
-                </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+              <span className="material-symbols-outlined">analytics</span>
             </div>
-            <div className="flex items-baseline gap-3 mb-6 relative z-10">
-                <span className="text-4xl font-bold text-slate-900 dark:text-white">84<span className="text-xl text-slate-400 dark:text-text-secondary font-normal">/100</span></span>
-                <div className="flex items-center gap-1 text-[#0bda5b] bg-[#0bda5b]/10 px-2 py-0.5 rounded text-sm font-medium">
-                    <span className="material-symbols-outlined text-[16px]">trending_up</span>
-                    <span>+5% к прошлому месяцу</span>
-                </div>
-            </div>
-            {/* Simple SVG Line Chart */}
-            <div className="w-full h-[220px] relative z-10">
-                <div className="absolute inset-0 flex flex-col justify-between text-xs text-slate-300 dark:text-text-secondary/50 pointer-events-none">
-                     {[...Array(5)].map((_,i) => <div key={i} className="w-full border-b border-dashed border-slate-200 dark:border-border-dark h-0"></div>)}
-                </div>
-                <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
-                     <defs>
-                        <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor="#2e87c2" stopOpacity="0.3"></stop>
-                            <stop offset="100%" stopColor="#2e87c2" stopOpacity="0"></stop>
-                        </linearGradient>
-                     </defs>
-                     <path d="M0,70 Q10,65 20,50 T40,45 T60,30 T80,35 T100,20 V100 H0 Z" fill="url(#chartGradient)"></path>
-                     <path d="M0,70 Q10,65 20,50 T40,45 T60,30 T80,35 T100,20" fill="none" stroke="#2e87c2" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" vectorEffect="non-scaling-stroke"></path>
-                     <circle cx="20" cy="50" fill="#2e87c2" r="1.5" className="hover:r-3 transition-all cursor-pointer"></circle>
-                     <circle cx="40" cy="45" fill="#2e87c2" r="1.5" className="hover:r-3 transition-all cursor-pointer"></circle>
-                     <circle cx="60" cy="30" fill="#2e87c2" r="1.5" className="hover:r-3 transition-all cursor-pointer"></circle>
-                     <circle cx="80" cy="35" fill="#2e87c2" r="1.5" className="hover:r-3 transition-all cursor-pointer"></circle>
-                     <circle cx="100" cy="20" fill="#fff" r="2.5" stroke="#2e87c2" strokeWidth="1" className="animate-pulse"></circle>
-                </svg>
-            </div>
-            <div className="flex justify-between mt-2 text-xs text-slate-400 dark:text-text-secondary font-medium px-1">
-                <span>1 Сен</span><span>15 Сен</span><span>1 Окт</span><span>15 Окт</span><span>1 Ноя</span>
-            </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
+          <p className="text-xs text-slate-500 dark:text-text-secondary uppercase tracking-wider font-medium mt-1">Всего тестов</p>
         </div>
-        
-        {/* Latest Insight */}
-        <div className="lg:col-span-1 flex flex-col gap-4">
-            <div className="bg-primary text-white rounded-xl p-6 relative overflow-hidden flex-1 flex flex-col justify-between">
-                <div className="absolute inset-0 opacity-20 pointer-events-none">
-                     <svg className="h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100"><path d="M0 100 C 20 0 50 0 100 100 Z" fill="white"></path></svg>
-                </div>
-                <div className="relative z-10">
-                    <h3 className="font-bold text-lg mb-1">Свежий инсайт</h3>
-                    <p className="text-blue-100 text-sm mb-4">Из теста "Лидерские способности" от 24 Окт.</p>
-                    <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
-                        <p className="text-sm font-medium leading-relaxed">"Вы демонстрируете исключительное стратегическое мышление. Рассмотрите роли, связанные с долгосрочным планированием."</p>
-                    </div>
-                </div>
-                <button className="relative z-10 w-full mt-4 bg-white text-primary font-bold text-sm py-2.5 rounded-lg hover:bg-blue-50 transition-colors">Читать полный анализ</button>
+        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+              <span className="material-symbols-outlined">quiz</span>
             </div>
-            <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl p-5 flex items-center justify-between">
-                 <div>
-                    <p className="text-slate-500 dark:text-text-secondary text-xs font-medium uppercase tracking-wider">Всего тестов</p>
-                    <p className="text-slate-900 dark:text-white text-2xl font-bold">24</p>
-                 </div>
-                 <div>
-                    <p className="text-slate-500 dark:text-text-secondary text-xs font-medium uppercase tracking-wider">Ре-тест через</p>
-                    <p className="text-slate-900 dark:text-white text-2xl font-bold">7 дней</p>
-                 </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.quizCount}</p>
+          <p className="text-xs text-slate-500 dark:text-text-secondary uppercase tracking-wider font-medium mt-1">Квиз-тестов</p>
+        </div>
+        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
+              <span className="material-symbols-outlined">forum</span>
             </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.chatCount}</p>
+          <p className="text-xs text-slate-500 dark:text-text-secondary uppercase tracking-wider font-medium mt-1">AI-диалогов</p>
+        </div>
+        <div className="bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+              <span className="material-symbols-outlined">trending_up</span>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.avgScore}%</p>
+          <p className="text-xs text-slate-500 dark:text-text-secondary uppercase tracking-wider font-medium mt-1">Средний балл</p>
         </div>
       </div>
 
-      {/* History List */}
-      <div className="space-y-4">
-        {[
-            { title: "Индекс когнитивной гибкости", cat: "Мозг", date: "24 Окт, 2023", res: "Высокая адаптивность", color: "text-green-400", bg: "bg-green-400/10", dot: "bg-green-400", icon: "psychology", iconColor: "text-blue-400", iconBg: "bg-blue-500/10" },
-            { title: "Тест профориентации", cat: "Карьера", date: "10 Окт, 2023", res: "Креативный лидер", color: "text-purple-400", bg: "bg-purple-400/10", dot: "bg-purple-400", icon: "work", iconColor: "text-purple-400", iconBg: "bg-purple-500/10" },
-            { title: "Сканирование выгорания", cat: "Здоровье", date: "28 Сен, 2023", res: "Умеренный риск", color: "text-orange-400", bg: "bg-orange-400/10", dot: "bg-orange-400", icon: "self_improvement", iconColor: "text-orange-400", iconBg: "bg-orange-500/10" }
-        ].map((item, i) => (
-            <div key={i} className="group flex flex-col md:flex-row gap-5 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl p-5 hover:border-primary/50 hover:shadow-lg transition-all duration-300 items-start md:items-center">
-                <div className="flex items-center gap-4 flex-1">
-                    <div className={`h-12 w-12 rounded-full ${item.iconBg} flex items-center justify-center ${item.iconColor} shrink-0`}>
-                        <span className="material-symbols-outlined">{item.icon}</span>
+      {/* Filter & Actions */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="flex bg-slate-100 dark:bg-background-dark rounded-lg p-1 border border-slate-200 dark:border-border-dark">
+          {([['all', 'Все'], ['quiz', 'Тесты'], ['chat', 'AI-диалоги']] as [FilterType, string][]).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`px-4 py-2 rounded-md text-xs font-medium transition-all ${
+                filter === key
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-slate-500 dark:text-text-secondary hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {results.length > 0 && (
+          <div className="relative">
+            {showConfirmClear ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">Удалить всё?</span>
+                <button
+                  onClick={handleClearAll}
+                  className="px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-medium transition-colors"
+                >
+                  Да
+                </button>
+                <button
+                  onClick={() => setShowConfirmClear(false)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white text-xs font-medium transition-colors"
+                >
+                  Нет
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowConfirmClear(true)}
+                className="text-xs text-slate-400 hover:text-red-500 transition-colors flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-sm">delete_sweep</span>
+                Очистить историю
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Results List */}
+      {filteredResults.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-6">
+            <span className="material-symbols-outlined text-4xl text-slate-400">history</span>
+          </div>
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+            {filter === 'all' ? 'История пуста' : 'Нет результатов'}
+          </h3>
+          <p className="text-slate-500 dark:text-text-secondary text-sm max-w-md mb-6">
+            {filter === 'all'
+              ? 'Пройдите свой первый тест, чтобы начать отслеживать прогресс.'
+              : 'Попробуйте выбрать другой фильтр или пройдите новый тест.'}
+          </p>
+          <Link
+            to="/dashboard"
+            className="bg-primary hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-lg">play_arrow</span>
+            Пройти тест
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredResults.map((item, i) => {
+            const topScore = getTopScore(item);
+            const colors = resultColorMap[i % 5];
+            const iconColors: Record<string, { iconColor: string; iconBg: string }> = {
+              quiz: { iconColor: 'text-blue-500', iconBg: 'bg-blue-500/10' },
+              chat: { iconColor: 'text-purple-500', iconBg: 'bg-purple-500/10' },
+            };
+            const { iconColor, iconBg } = iconColors[item.type] || iconColors.quiz;
+
+            return (
+              <div key={item.id} className="group flex flex-col md:flex-row gap-5 bg-white dark:bg-card-dark border border-slate-200 dark:border-border-dark rounded-xl p-5 hover:border-primary/50 hover:shadow-lg transition-all duration-300 items-start md:items-center">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className={`h-12 w-12 rounded-full ${iconBg} flex items-center justify-center ${iconColor} shrink-0`}>
+                        <span className="material-symbols-outlined">{item.assessmentIcon}</span>
                     </div>
-                    <div>
-                        <h4 className="text-slate-900 dark:text-white font-bold text-lg group-hover:text-primary transition-colors">{item.title}</h4>
-                        <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs text-slate-500 dark:text-text-secondary bg-slate-100 dark:bg-background-dark px-2 py-0.5 rounded border border-slate-200 dark:border-border-dark">{item.cat}</span>
+                    <div className="min-w-0 flex-1">
+                        <h4 className="text-slate-900 dark:text-white font-bold text-lg group-hover:text-primary transition-colors truncate">
+                          {item.assessmentTitle}
+                        </h4>
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                            <span className="text-xs text-slate-500 dark:text-text-secondary bg-slate-100 dark:bg-background-dark px-2 py-0.5 rounded border border-slate-200 dark:border-border-dark">
+                              {item.type === 'chat' ? 'AI Диалог' : 'Тест'}
+                            </span>
                             <span className="text-xs text-slate-500 dark:text-text-secondary flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[14px]">calendar_today</span> {item.date}
+                                <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                                {formatDate(item.date)}, {formatTime(item.date)}
                             </span>
                         </div>
                     </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-6 w-full md:w-auto justify-between md:justify-end">
+                <div className="flex flex-wrap items-center gap-4 w-full md:w-auto justify-between md:justify-end">
                     <div className="flex flex-col items-start md:items-end">
                         <span className="text-xs text-slate-400 dark:text-text-secondary uppercase tracking-wider font-semibold">Результат</span>
-                        <span className={`inline-flex items-center gap-1.5 rounded-full ${item.bg} px-2.5 py-0.5 text-sm font-medium ${item.color}`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${item.dot}`}></span>
-                            {item.res}
+                        <span className={`inline-flex items-center gap-1.5 rounded-full ${colors.bg} px-2.5 py-0.5 text-sm font-medium ${colors.color}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${colors.dot}`}></span>
+                            {item.archetype}
                         </span>
                     </div>
-                    <button className="text-sm font-medium text-slate-700 dark:text-white bg-slate-100 dark:bg-background-dark hover:bg-primary hover:text-white border border-slate-200 dark:border-border-dark hover:border-primary px-4 py-2 rounded-lg transition-all shadow-sm">
-                        Подробнее
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`/results/${item.assessmentId}`}
+                        state={{ savedResultId: item.id }}
+                        className="text-sm font-medium text-slate-700 dark:text-white bg-slate-100 dark:bg-background-dark hover:bg-primary hover:text-white border border-slate-200 dark:border-border-dark hover:border-primary px-4 py-2 rounded-lg transition-all shadow-sm"
+                      >
+                          Подробнее
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                        title="Удалить"
+                      >
+                        <span className="material-symbols-outlined text-lg">delete</span>
+                      </button>
+                    </div>
                 </div>
-            </div>
-        ))}
-      </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
