@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
+import Markdown from 'react-markdown';
 import { startChatSession, sendMessageToAI } from '../services/geminiService';
 import { getAssessmentById } from '../services/assessmentData';
 import { AssessmentConfig, Message, Answer } from '../types';
@@ -72,6 +73,11 @@ export const Assessment: React.FC = () => {
     }
   };
 
+  const handleFinishChat = () => {
+      // Send messages history to results page for analysis
+      navigate(`/results/${id}`, { state: { messages: messages, assessmentId: id, type: 'chat' } });
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -99,7 +105,7 @@ export const Assessment: React.FC = () => {
         // FINISH QUIZ
         // Pass answers to results page
         setTimeout(() => {
-             navigate(`/results/${id}`, { state: { answers: updatedAnswers, assessmentId: id } });
+             navigate(`/results/${id}`, { state: { answers: updatedAnswers, assessmentId: id, type: 'quiz' } });
         }, 300);
     }
   };
@@ -129,10 +135,22 @@ export const Assessment: React.FC = () => {
                   </div>
               </div>
           </div>
-          <Link to="/dashboard" className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-[#283843] transition-colors">
-              <span className="material-symbols-outlined text-lg">close</span>
-              <span>Выход</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* Show Finish button only in chat mode and if there are messages */}
+            {assessment.type === 'chat' && messages.length > 2 && (
+                 <button 
+                    onClick={handleFinishChat}
+                    className="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-bold bg-green-500 text-white hover:bg-green-600 transition-colors shadow-sm"
+                 >
+                    <span>Завершить</span>
+                    <span className="material-symbols-outlined text-lg">check</span>
+                 </button>
+            )}
+            <Link to="/dashboard" className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-[#283843] transition-colors">
+                <span className="material-symbols-outlined text-lg">close</span>
+                <span>Выход</span>
+            </Link>
+          </div>
       </div>
     </header>
   );
@@ -146,18 +164,27 @@ export const Assessment: React.FC = () => {
           <div className="max-w-3xl mx-auto flex flex-col gap-4">
              {/* Info Bubble */}
              <div className="flex justify-center my-4">
-                <span className="bg-slate-200 dark:bg-[#1f2c34] text-slate-600 dark:text-slate-400 text-xs px-3 py-1 rounded-full shadow-sm">
-                    {assessment.description}
+                <span className="bg-slate-200 dark:bg-[#1f2c34] text-slate-600 dark:text-slate-400 text-xs px-3 py-1 rounded-full shadow-sm text-center">
+                    {assessment.description} <br/>
+                    <span className="opacity-70">Отвечайте развернуто для точного анализа.</span>
                 </span>
             </div>
             {messages.map((msg) => (
                 <div key={msg.id} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`flex max-w-[85%] md:max-w-[70%] gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className={`flex max-w-[85%] md:max-w-[80%] gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                         <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${msg.role === 'user' ? 'bg-indigo-100 text-indigo-600 hidden md:flex' : 'bg-white dark:bg-[#1f2c34] border border-slate-100 dark:border-slate-700 text-primary'}`}>
                             <span className="material-symbols-outlined text-sm">{msg.role === 'user' ? 'person' : 'smart_toy'}</span>
                         </div>
-                        <div className={`px-4 py-3 rounded-2xl text-[15px] leading-relaxed shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-white dark:bg-[#1f2c34] text-slate-800 dark:text-slate-100 border border-slate-100 dark:border-[#283843] rounded-bl-none'}`}>
-                            {msg.text}
+                        <div className={`px-4 py-3 rounded-2xl text-[15px] leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-white dark:bg-[#1f2c34] text-slate-800 dark:text-slate-100 border border-slate-100 dark:border-[#283843] rounded-bl-none'}`}>
+                            {msg.role === 'user' ? (
+                              <div className="whitespace-pre-wrap">{msg.text}</div>
+                            ) : (
+                              <Markdown 
+                                className="prose dark:prose-invert max-w-none prose-p:my-1.5 prose-headings:my-2 prose-headings:text-slate-900 dark:prose-headings:text-white prose-ul:my-1 prose-ul:pl-4 prose-li:my-0.5 prose-blockquote:my-2 prose-blockquote:border-primary/50 prose-blockquote:bg-slate-50 dark:prose-blockquote:bg-slate-800/50 prose-blockquote:not-italic prose-blockquote:px-3 prose-blockquote:py-1 prose-blockquote:rounded-r prose-strong:text-slate-900 dark:prose-strong:text-white [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                              >
+                                {msg.text}
+                              </Markdown>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -177,9 +204,17 @@ export const Assessment: React.FC = () => {
           </div>
         </main>
         <footer className="flex-none p-4 bg-white dark:bg-[#131b20] border-t border-slate-200 dark:border-[#283843]">
-           <div className="max-w-3xl mx-auto relative flex items-end gap-2">
-            <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ваш ответ..." className="w-full bg-slate-100 dark:bg-[#1f2c34] text-slate-900 dark:text-white rounded-2xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent" disabled={isTyping} />
-            <button onClick={handleSendMessage} disabled={!inputValue.trim() || isTyping} className={`h-[50px] w-[50px] flex items-center justify-center rounded-full transition-all shrink-0 ${inputValue.trim() && !isTyping ? 'bg-primary text-white hover:bg-primary-hover shadow-lg' : 'bg-slate-200 dark:bg-[#283843] text-slate-400 cursor-not-allowed'}`}><span className="material-symbols-outlined">send</span></button>
+           <div className="max-w-3xl mx-auto flex flex-col gap-3">
+            {/* Mobile Finish Button */}
+            {messages.length > 2 && (
+                <button onClick={handleFinishChat} className="md:hidden w-full py-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-sm font-bold border border-green-200 dark:border-green-800">
+                    Завершить диагностику и получить результат
+                </button>
+            )}
+            <div className="relative flex items-end gap-2">
+                <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ваш ответ..." className="w-full bg-slate-100 dark:bg-[#1f2c34] text-slate-900 dark:text-white rounded-2xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent" disabled={isTyping} />
+                <button onClick={handleSendMessage} disabled={!inputValue.trim() || isTyping} className={`h-[50px] w-[50px] flex items-center justify-center rounded-full transition-all shrink-0 ${inputValue.trim() && !isTyping ? 'bg-primary text-white hover:bg-primary-hover shadow-lg' : 'bg-slate-200 dark:bg-[#283843] text-slate-400 cursor-not-allowed'}`}><span className="material-symbols-outlined">send</span></button>
+            </div>
           </div>
         </footer>
       </div>

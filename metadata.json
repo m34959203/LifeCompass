@@ -1,5 +1,5 @@
 {
-  "name": "LifeCompass AI",
-  "description": "Professional psychological assessment platform featuring RIASEC, Big Five, and Burnout tests. Uses anonymized AI analysis for career guidance and self-discovery. Compliant with RK Personal Data Law.",
+  "name": "LifeCompass Uni",
+  "description": "University-grade career assessment platform. Features RIASEC, Big Five, and Soft Skills analysis for students and alumni.",
   "requestFramePermissions": []
 }

@@ -1,15 +1,27 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { getUserProfile } from '../services/storageService';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+const PROFILE_KEY = 'lifecompass_profile';
+
+const loadProfile = (): { name: string; email: string } => {
+  try {
+    const saved = localStorage.getItem(PROFILE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { name: parsed.name || '', email: parsed.email || '' };
+    }
+  } catch {}
+  return { name: '', email: '' };
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
-  const profile = getUserProfile();
+  const profile = loadProfile();
 
   const isActive = (path: string) => location.pathname === path;
 

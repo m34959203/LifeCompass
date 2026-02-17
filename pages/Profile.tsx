@@ -1,36 +1,63 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getUserProfile, saveUserProfile, UserProfile, getAllResults } from '../services/storageService';
-import { useTheme } from '../contexts/ThemeContext';
-import { useToast } from '../components/Toast';
+
+interface UserProfile {
+  name: string;
+  email: string;
+  age: string;
+  field: string;
+  location: string;
+}
+
+const defaultProfile: UserProfile = {
+  name: '',
+  email: '',
+  age: '',
+  field: '',
+  location: '',
+};
+
+const PROFILE_KEY = 'lifecompass_profile';
+
+const loadProfile = (): UserProfile => {
+  try {
+    const saved = localStorage.getItem(PROFILE_KEY);
+    if (saved) return { ...defaultProfile, ...JSON.parse(saved) };
+  } catch {}
+  return defaultProfile;
+};
+
+const saveProfile = (profile: UserProfile) => {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+};
 
 export const Profile: React.FC = () => {
-  const { isDark, toggleDark } = useTheme();
-  const { showToast } = useToast();
-  const [profile, setProfile] = useState<UserProfile>(getUserProfile);
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const [profile, setProfile] = useState<UserProfile>(loadProfile);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<UserProfile>(profile);
-  const totalTests = getAllResults().length;
 
   useEffect(() => {
     setEditForm(profile);
   }, [profile]);
 
+  const toggleDark = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle('dark', next);
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+  };
+
   const handleSave = () => {
-    saveUserProfile(editForm);
+    saveProfile(editForm);
     setProfile(editForm);
     setIsEditing(false);
-    showToast('Профиль обновлён', 'success');
   };
 
   const handleCancel = () => {
     setEditForm(profile);
     setIsEditing(false);
   };
-
-  const memberDate = profile.memberSince
-    ? new Date(profile.memberSince).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
-    : 'Недавно';
 
   return (
     <div className="p-6 lg:p-10 max-w-5xl mx-auto flex flex-col gap-8 pb-10">
@@ -59,12 +86,9 @@ export const Profile: React.FC = () => {
                 </p>
             </div>
             <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-1">
-                <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                  Участник с {memberDate}
-                </span>
                 <span className="px-3 py-1 rounded-full bg-primary/10 text-xs font-medium text-primary border border-primary/20 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">analytics</span>
-                    {totalTests} {totalTests === 1 ? 'тест' : totalTests >= 2 && totalTests <= 4 ? 'теста' : 'тестов'} пройдено
+                    <span className="material-symbols-outlined text-[14px]">school</span>
+                    LifeCompass Uni
                 </span>
             </div>
         </div>
@@ -127,11 +151,11 @@ export const Profile: React.FC = () => {
                           value={editForm.age}
                           onChange={(e) => setEditForm(prev => ({ ...prev, age: e.target.value }))}
                           className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#131b20] text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all"
-                          placeholder="25"
+                          placeholder="20"
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">Сфера</label>
+                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">Специальность</label>
                         <input
                           type="text"
                           value={editForm.field}
@@ -141,13 +165,13 @@ export const Profile: React.FC = () => {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">Локация</label>
+                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">Университет / Город</label>
                         <input
                           type="text"
                           value={editForm.location}
                           onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
                           className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#131b20] text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all"
-                          placeholder="Алматы, Казахстан"
+                          placeholder="КазНУ, Алматы"
                         />
                       </div>
                       <div className="sm:col-span-2 flex justify-end gap-3">
@@ -172,51 +196,13 @@ export const Profile: React.FC = () => {
                         <p className="text-base text-slate-900 dark:text-white">{profile.age || 'Не указан'}</p>
                       </div>
                       <div>
-                        <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">Сфера</span>
+                        <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">Специальность</span>
                         <p className="text-base text-slate-900 dark:text-white">{profile.field || 'Не указана'}</p>
                       </div>
                       <div>
-                        <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">Локация</span>
-                        <p className="text-base text-slate-900 dark:text-white">{profile.location || 'Не указана'}</p>
+                        <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">Университет / Город</span>
+                        <p className="text-base text-slate-900 dark:text-white">{profile.location || 'Не указан'}</p>
                       </div>
-                    </div>
-                  )}
-                </div>
-            </div>
-
-            {/* Recent Results */}
-            <div className="bg-white dark:bg-[#1e272e] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-[#1a2228]">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary">history</span> Последние результаты
-                    </h3>
-                    <Link to="/history" className="text-primary hover:text-primary/80 text-sm font-medium">
-                      Все
-                    </Link>
-                </div>
-                <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {getAllResults().slice(0, 3).map((result) => (
-                    <Link
-                      key={result.id}
-                      to={`/results/${result.assessmentId}`}
-                      state={{ savedResultId: result.id }}
-                      className="flex items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-[#232d36] transition-colors"
-                    >
-                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${result.assessmentGradient} flex items-center justify-center text-white shrink-0`}>
-                        <span className="material-symbols-outlined text-lg">{result.assessmentIcon}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{result.assessmentTitle}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{result.archetype}</p>
-                      </div>
-                      <span className="text-xs text-slate-400">
-                        {new Date(result.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-                      </span>
-                    </Link>
-                  ))}
-                  {totalTests === 0 && (
-                    <div className="p-6 text-center text-slate-500 dark:text-slate-400 text-sm">
-                      Пока нет результатов. <Link to="/dashboard" className="text-primary hover:underline">Пройти тест</Link>
                     </div>
                   )}
                 </div>

@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { RadarChart } from '../components/RadarChart';
-import { Link, useLocation, useParams, useNavigate } from 'react-router-dom';
-import { Answer, ChartDataPoint } from '../types';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { Answer, ChartDataPoint, Message } from '../types';
 import { getAssessmentById } from '../services/assessmentData';
-import { generateQuizAnalysis } from '../services/geminiService';
-import { saveTestResult, getResultById, generateResultId, TestResult } from '../services/storageService';
-import { useToast } from '../components/Toast';
+import { generateQuizAnalysis, generateChatAnalysis } from '../services/geminiService';
 
 interface ResultState {
     archetype: string;
@@ -17,139 +15,105 @@ interface ResultState {
 export const Results: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
-  const navigate = useNavigate();
-  const { showToast } = useToast();
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [result, setResult] = useState<ResultState | null>(null);
   const [loading, setLoading] = useState(true);
   const [assessmentTitle, setAssessmentTitle] = useState("Результаты");
-  const [savedResultId, setSavedResultId] = useState<string | null>(null);
 
   useEffect(() => {
     const processResults = async () => {
-        const stateAnswers = location.state?.answers as Answer[];
-        const assessmentId = location.state?.assessmentId || id;
-        const existingResultId = location.state?.savedResultId as string | undefined;
+        const state = location.state || {};
+        const assessmentId = state.assessmentId || id;
+        const assessment = getAssessmentById(assessmentId || '');
 
-        // Check if we're viewing a saved result
-        if (existingResultId) {
-            const saved = getResultById(existingResultId);
-            if (saved) {
-                setChartData(saved.scores);
-                setResult({
-                    archetype: saved.archetype,
-                    summary: saved.summary,
-                    careers: saved.careers,
-                    strengths: saved.strengths,
-                });
-                setAssessmentTitle(saved.assessmentTitle);
-                setSavedResultId(saved.id);
-                setLoading(false);
-                return;
-            }
-        }
+        if (assessment) setAssessmentTitle(assessment.title);
 
-        if (!stateAnswers || stateAnswers.length === 0) {
-            // Try to load latest result for this assessment from storage
-            const { getAllResults } = await import('../services/storageService');
-            const savedResults = getAllResults().filter(r => r.assessmentId === assessmentId);
-            if (savedResults.length > 0) {
-                const latest = savedResults[0];
-                setChartData(latest.scores);
-                setResult({
-                    archetype: latest.archetype,
-                    summary: latest.summary,
-                    careers: latest.careers,
-                    strengths: latest.strengths,
-                });
-                setAssessmentTitle(latest.assessmentTitle);
-                setSavedResultId(latest.id);
-                setLoading(false);
-                return;
-            }
+        // --- PATH A: QUIZ RESULTS (Structured Answers) ---
+        if (state.answers && state.answers.length > 0) {
+            const stateAnswers = state.answers as Answer[];
 
-            // Fallback for direct link access (Demo data)
-            setChartData([
-                { subject: 'Реалистичный', A: 80, fullMark: 100 },
-                { subject: 'Интеллектуальный', A: 90, fullMark: 100 },
-                { subject: 'Артистичный', A: 40, fullMark: 100 },
-                { subject: 'Социальный', A: 60, fullMark: 100 },
-                { subject: 'Предприимчивый', A: 50, fullMark: 100 },
-                { subject: 'Конвенциональный', A: 70, fullMark: 100 },
-            ]);
-            setResult({
-                archetype: "Демо-режим",
-                summary: "Это демонстрационные данные, так как тест не был пройден. Пройдите тест для получения реального результата.",
-                careers: ["Data Scientist", "Инженер", "Аналитик"],
-                strengths: ["Логика", "Системность"]
+            // 1. Calculate Scores locally
+            const scores: Record<string, number> = {};
+            const counts: Record<string, number> = {};
+            const maxPerQuestion = 5;
+
+            stateAnswers.forEach(a => {
+                scores[a.category] = (scores[a.category] || 0) + Number(a.value);
+                counts[a.category] = (counts[a.category] || 0) + 1;
             });
+
+            const normalizedScores: ChartDataPoint[] = Object.keys(scores).map(category => {
+                const totalScore = scores[category];
+                const maxPossible = counts[category] * maxPerQuestion;
+                return {
+                    subject: category,
+                    A: Math.round((totalScore / maxPossible) * 100),
+                    fullMark: 100
+                };
+            });
+            setChartData(normalizedScores);
+
+            // 2. Call AI for Text Analysis
+            const scoresMap = normalizedScores.reduce((acc, curr) => {
+                acc[curr.subject] = curr.A;
+                return acc;
+            }, {} as Record<string, number>);
+
+            try {
+                const aiData = await generateQuizAnalysis(assessment ? assessment.title : 'Assessment', scoresMap);
+                setResult(aiData);
+            } catch (e) {
+                console.error(e);
+            }
             setLoading(false);
             return;
         }
 
-        // 1. Calculate Scores
-        const scores: Record<string, number> = {};
-        const counts: Record<string, number> = {};
-        const maxPerQuestion = 5;
+        // --- PATH B: CHAT RESULTS (Unstructured Messages) ---
+        if (state.messages && state.messages.length > 0) {
+            const messages = state.messages as Message[];
 
-        stateAnswers.forEach(a => {
-            scores[a.category] = (scores[a.category] || 0) + Number(a.value);
-            counts[a.category] = (counts[a.category] || 0) + 1;
-        });
+            try {
+                // Call specialized Chat Analysis which returns BOTH scores and text
+                const aiData = await generateChatAnalysis(assessment ? assessment.title : 'Chat Assessment', messages);
 
-        const normalizedScores: ChartDataPoint[] = Object.keys(scores).map(category => {
-            const totalScore = scores[category];
-            const maxPossible = counts[category] * maxPerQuestion;
-            return {
-                subject: category,
-                A: Math.round((totalScore / maxPossible) * 100),
-                fullMark: 100
-            };
-        });
+                // Map AI generated scores to Chart Data
+                const generatedChartData: ChartDataPoint[] = Object.keys(aiData.scores || {}).map(key => ({
+                    subject: key,
+                    A: aiData.scores[key],
+                    fullMark: 100
+                }));
 
-        setChartData(normalizedScores);
-
-        // 2. Get Assessment Info
-        const assessment = getAssessmentById(assessmentId || '');
-        if (assessment) setAssessmentTitle(assessment.title);
-
-        // 3. Call AI for Analysis
-        const scoresMap = normalizedScores.reduce((acc, curr) => {
-            acc[curr.subject] = curr.A;
-            return acc;
-        }, {} as Record<string, number>);
-
-        try {
-            const aiData = await generateQuizAnalysis(assessment ? assessment.title : 'Assessment', scoresMap);
-            setResult(aiData);
-
-            // 4. Save result to localStorage
-            if (assessment && aiData) {
-                const resultId = generateResultId();
-                const testResult: TestResult = {
-                    id: resultId,
-                    assessmentId: assessment.id,
-                    assessmentTitle: assessment.title,
-                    assessmentIcon: assessment.icon || 'quiz',
-                    assessmentGradient: assessment.gradient || 'from-slate-500 to-slate-600',
-                    type: assessment.type,
-                    date: new Date().toISOString(),
-                    scores: normalizedScores,
+                setChartData(generatedChartData);
+                setResult({
                     archetype: aiData.archetype,
                     summary: aiData.summary,
                     careers: aiData.careers,
-                    strengths: aiData.strengths,
-                    answers: stateAnswers,
-                };
-                saveTestResult(testResult);
-                setSavedResultId(resultId);
-                showToast('Результат сохранён в историю', 'success');
+                    strengths: aiData.strengths
+                });
+            } catch (e) {
+                console.error("Chat analysis failed", e);
             }
-        } catch (e) {
-            console.error(e);
-        } finally {
             setLoading(false);
+            return;
         }
+
+        // --- PATH C: DIRECT LINK / DEMO DATA ---
+        setChartData([
+            { subject: 'Реалистичный', A: 80, fullMark: 100 },
+            { subject: 'Интеллектуальный', A: 90, fullMark: 100 },
+            { subject: 'Артистичный', A: 40, fullMark: 100 },
+            { subject: 'Социальный', A: 60, fullMark: 100 },
+            { subject: 'Предприимчивый', A: 50, fullMark: 100 },
+            { subject: 'Конвенциональный', A: 70, fullMark: 100 },
+        ]);
+        setResult({
+            archetype: "Демо-режим",
+            summary: "Это демонстрационные данные. Пройдите тест или диалог с AI для получения реального результата.",
+            careers: ["Data Scientist", "Инженер", "Аналитик"],
+            strengths: ["Логика", "Системность"]
+        });
+        setLoading(false);
     };
 
     processResults();
@@ -159,7 +123,10 @@ export const Results: React.FC = () => {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#131b20]">
               <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-primary animate-spin mb-4"></div>
-              <p className="text-slate-500 animate-pulse">ИИ анализирует ваши ответы...</p>
+              <p className="text-slate-500 animate-pulse text-center">
+                  ИИ анализирует ваши ответы...<br/>
+                  <span className="text-xs">Это может занять несколько секунд</span>
+              </p>
           </div>
       );
   }
@@ -209,16 +176,13 @@ export const Results: React.FC = () => {
                 {result?.summary}
             </p>
             <div className="flex flex-wrap gap-4">
-                <button
-                    onClick={() => showToast('Экспорт в PDF будет доступен в следующем обновлении', 'info')}
-                    className="flex items-center justify-center gap-2 rounded-xl h-12 px-6 bg-primary hover:bg-primary/90 transition-colors text-white font-bold shadow-[0_0_20px_rgba(46,135,194,0.3)]"
-                >
-                    <span className="material-symbols-outlined">download</span>
-                    <span>Скачать PDF</span>
-                </button>
-                <Link to="/dashboard" className="flex items-center justify-center gap-2 rounded-xl h-12 px-6 bg-slate-100 dark:bg-[#283843] hover:bg-slate-200 dark:hover:bg-[#344856] transition-colors text-slate-700 dark:text-white font-bold border border-slate-200 dark:border-[#3e5563]">
+                <Link to="/dashboard" className="flex items-center justify-center gap-2 rounded-xl h-12 px-6 bg-primary hover:bg-primary/90 transition-colors text-white font-bold shadow-[0_0_20px_rgba(46,135,194,0.3)]">
                     <span className="material-symbols-outlined">refresh</span>
                     <span>Новый тест</span>
+                </Link>
+                <Link to="/dashboard" className="flex items-center justify-center gap-2 rounded-xl h-12 px-6 bg-slate-100 dark:bg-[#283843] hover:bg-slate-200 dark:hover:bg-[#344856] transition-colors text-slate-700 dark:text-white font-bold border border-slate-200 dark:border-[#3e5563]">
+                    <span className="material-symbols-outlined">home</span>
+                    <span>На главную</span>
                 </Link>
             </div>
           </div>
@@ -233,7 +197,11 @@ export const Results: React.FC = () => {
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-slate-900 dark:text-white text-xl font-bold">Карта компетенций</h3>
                 </div>
-                <RadarChart data={chartData} />
+                {chartData.length > 0 ? (
+                    <RadarChart data={chartData} />
+                ) : (
+                    <div className="h-[300px] flex items-center justify-center text-slate-400">Нет данных для графика</div>
+                )}
             </div>
 
             {/* Key Insight */}
@@ -266,7 +234,7 @@ export const Results: React.FC = () => {
                 {chartData.map((item, i) => (
                     <div key={i} className="bg-white dark:bg-[#1c262e] border border-slate-200 dark:border-[#283843] rounded-xl p-5 hover:border-primary/40 transition-colors group">
                         <div className="flex justify-between items-center mb-3">
-                            <h4 className="text-slate-900 dark:text-white font-bold">{item.subject}</h4>
+                            <h4 className="text-slate-900 dark:text-white font-bold truncate pr-2">{item.subject}</h4>
                             <span className={`font-black text-lg ${item.A > 70 ? 'text-primary' : 'text-slate-700 dark:text-white'}`}>{item.A}%</span>
                         </div>
                         <div className="w-full bg-slate-100 dark:bg-[#283843] h-2 rounded-full mb-3 overflow-hidden">
