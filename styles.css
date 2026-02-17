@@ -1,0 +1,55 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Class-based dark mode (not media query) */
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary: #2e87c2;
+  --color-primary-hover: #2563EB;
+  --color-background-light: #f6f7f8;
+  --color-background-dark: #131a1f;
+  --color-card-dark: #1e2830;
+  --color-border-dark: #283843;
+  --color-text-secondary: #99b1c2;
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Inter', sans-serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #131a1f;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #283843;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #395060;
+}
+
+/* Typing animation */
+.typing-dot {
+  animation: typing 1.4s infinite ease-in-out both;
+}
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typing {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
