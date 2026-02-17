@@ -11,10 +11,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const isLanding = location.pathname === '/';
+  const isAuth = location.pathname === '/login' || location.pathname === '/register';
   const isAssessment = location.pathname.startsWith('/assessment');
 
+  // Landing and auth pages — no sidebar
   if (isLanding) {
     return <div className="h-screen w-full overflow-y-auto bg-white dark:bg-[#131b20]">{children}</div>;
+  }
+  if (isAuth) {
+    return <div className="h-screen w-full overflow-y-auto bg-background-light dark:bg-background-dark">{children}</div>;
   }
 
   return (

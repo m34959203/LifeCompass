@@ -1,9 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { getAllAssessments } from '../services/assessmentData';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Landing: React.FC = () => {
   const assessments = getAllAssessments();
+  const { isAuthenticated } = useAuth();
+  const authLink = isAuthenticated ? '/dashboard' : '/login';
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -25,8 +28,8 @@ export const Landing: React.FC = () => {
             <button onClick={() => scrollTo('how-it-works')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">Студентам</button>
             <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">Вузам</button>
           </div>
-          <Link to="/dashboard" className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-6 bg-primary hover:bg-primary/90 transition-colors text-white text-sm font-bold shadow-md shadow-primary/20">
-            Личный кабинет
+          <Link to={authLink} className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-6 bg-primary hover:bg-primary/90 transition-colors text-white text-sm font-bold shadow-md shadow-primary/20">
+            {isAuthenticated ? 'Личный кабинет' : 'Войти'}
           </Link>
         </div>
       </header>
@@ -47,7 +50,7 @@ export const Landing: React.FC = () => {
                     Платформа диагностики для абитуриентов и студентов. Определи свои сильные стороны, выбери специальность и развивай Soft Skills с помощью ИИ.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                    <Link to="/dashboard" className="flex items-center justify-center rounded-xl h-12 px-8 bg-primary hover:bg-blue-600 transition-colors text-white text-base font-bold shadow-lg shadow-primary/30">
+                    <Link to={authLink} className="flex items-center justify-center rounded-xl h-12 px-8 bg-primary hover:bg-blue-600 transition-colors text-white text-base font-bold shadow-lg shadow-primary/30">
                         <span>Начать диагностику</span>
                         <span className="material-symbols-outlined ml-2 text-sm">arrow_forward</span>
                     </Link>
@@ -164,7 +167,7 @@ export const Landing: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
             {assessments.map((item, i) => (
-              <Link key={item.id} to={`/assessment/${item.id}`} className={`flex flex-col rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-background-light dark:bg-[#1d2830] hover:shadow-lg hover:-translate-y-1 transition-all duration-300`}>
+              <Link key={item.id} to={isAuthenticated ? `/assessment/${item.id}` : '/login'} className={`flex flex-col rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-background-light dark:bg-[#1d2830] hover:shadow-lg hover:-translate-y-1 transition-all duration-300`}>
                 <div className={`h-20 bg-gradient-to-r ${item.gradient} relative`}>
                   <div className="absolute top-3 left-4 w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30">
                     <span className="material-symbols-outlined text-xl">{item.icon}</span>
@@ -185,7 +188,7 @@ export const Landing: React.FC = () => {
             ))}
           </div>
           <Link
-            to="/dashboard"
+            to={authLink}
             className="inline-flex items-center gap-2 mt-10 px-8 py-3 rounded-xl bg-primary hover:bg-blue-600 text-white font-bold transition-colors shadow-lg shadow-primary/30"
           >
             Начать тестирование
@@ -269,7 +272,7 @@ export const Landing: React.FC = () => {
             </div>
             <div className="flex flex-col gap-3">
                 <h4 className="font-bold text-sm">Студентам</h4>
-                <Link to="/dashboard" className="text-slate-500 hover:text-primary text-sm transition-colors">Все тесты</Link>
+                <Link to={authLink} className="text-slate-500 hover:text-primary text-sm transition-colors">Все тесты</Link>
                 <button onClick={() => scrollTo('assessments')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">Методики</button>
                 <button onClick={() => scrollTo('how-it-works')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">Как это работает</button>
             </div>
@@ -281,8 +284,8 @@ export const Landing: React.FC = () => {
             </div>
             <div className="flex flex-col gap-3">
                 <h4 className="font-bold text-sm">Продукт</h4>
-                <Link to="/profile" className="text-slate-500 hover:text-primary text-sm transition-colors">Профиль</Link>
-                <Link to="/history" className="text-slate-500 hover:text-primary text-sm transition-colors">История тестов</Link>
+                <Link to={isAuthenticated ? '/profile' : '/login'} className="text-slate-500 hover:text-primary text-sm transition-colors">Профиль</Link>
+                <Link to={isAuthenticated ? '/history' : '/login'} className="text-slate-500 hover:text-primary text-sm transition-colors">История тестов</Link>
                 <button onClick={() => scrollTo('features')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">Возможности</button>
             </div>
           </div>
