@@ -10,7 +10,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -69,31 +69,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <p className="text-sm font-medium">Главная</p>
             </Link>
 
-            <Link
-              to="/history"
-              onClick={handleLinkClick}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                isActive('/history')
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#283843]'
-              }`}
-            >
-              <span className="material-symbols-outlined">history</span>
-              <p className="text-sm font-medium">История</p>
-            </Link>
+            {isAuthenticated && (
+              <>
+                <Link
+                  to="/history"
+                  onClick={handleLinkClick}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                    isActive('/history')
+                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#283843]'
+                  }`}
+                >
+                  <span className="material-symbols-outlined">history</span>
+                  <p className="text-sm font-medium">История</p>
+                </Link>
 
-            <Link
-              to="/profile"
-              onClick={handleLinkClick}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                isActive('/profile')
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#283843]'
-              }`}
-            >
-              <span className="material-symbols-outlined">person</span>
-              <p className="text-sm font-medium">Профиль</p>
-            </Link>
+                <Link
+                  to="/profile"
+                  onClick={handleLinkClick}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                    isActive('/profile')
+                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#283843]'
+                  }`}
+                >
+                  <span className="material-symbols-outlined">person</span>
+                  <p className="text-sm font-medium">Профиль</p>
+                </Link>
+              </>
+            )}
           </nav>
 
           {/* Divider */}
@@ -119,35 +123,55 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* User Profile Bottom */}
-        <div className="flex flex-col gap-2">
-          <Link
-              to="/profile"
+        {/* Bottom section */}
+        {isAuthenticated ? (
+          <div className="flex flex-col gap-2">
+            <Link
+                to="/profile"
+                onClick={handleLinkClick}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-[#283843] bg-slate-50 dark:bg-[#1d2830] p-3 hover:bg-slate-100 dark:hover:bg-[#25323b] transition-colors cursor-pointer"
+            >
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center shrink-0">
+                <span className="text-white text-sm font-bold">
+                  {user?.name ? user.name.charAt(0).toUpperCase() : 'П'}
+                </span>
+              </div>
+              <div className="flex flex-col overflow-hidden flex-1">
+                <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                  {user?.name || 'Пользователь'}
+                </h3>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  {user?.email || 'Настроить профиль'}
+                </p>
+              </div>
+            </Link>
+            <button
+              onClick={() => { logout(); navigate('/'); onClose(); }}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-sm"
+            >
+              <span className="material-symbols-outlined text-lg">logout</span>
+              Выйти
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Link
+              to="/login"
               onClick={handleLinkClick}
-              className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-[#283843] bg-slate-50 dark:bg-[#1d2830] p-3 hover:bg-slate-100 dark:hover:bg-[#25323b] transition-colors cursor-pointer"
-          >
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center shrink-0">
-              <span className="text-white text-sm font-bold">
-                {user?.name ? user.name.charAt(0).toUpperCase() : 'П'}
-              </span>
-            </div>
-            <div className="flex flex-col overflow-hidden flex-1">
-              <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                {user?.name || 'Пользователь'}
-              </h3>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                {user?.email || 'Настроить профиль'}
-              </p>
-            </div>
-          </Link>
-          <button
-            onClick={() => { logout(); navigate('/'); onClose(); }}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-sm"
-          >
-            <span className="material-symbols-outlined text-lg">logout</span>
-            Выйти
-          </button>
-        </div>
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-blue-600 text-white text-sm font-bold transition-colors shadow-lg shadow-primary/20"
+            >
+              <span className="material-symbols-outlined text-lg">login</span>
+              Войти
+            </Link>
+            <Link
+              to="/register"
+              onClick={handleLinkClick}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#283843] text-sm font-medium transition-colors"
+            >
+              Регистрация
+            </Link>
+          </div>
+        )}
       </aside>
     </>
   );

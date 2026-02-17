@@ -1,45 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { getHistory } from '../services/historyService';
 
-interface UserProfile {
+interface ProfileForm {
   name: string;
-  email: string;
   age: string;
   field: string;
-  location: string;
+  university: string;
 }
 
-const defaultProfile: UserProfile = {
-  name: '',
-  email: '',
-  age: '',
-  field: '',
-  location: '',
-};
+const EXTRA_KEY = 'lifecompass_profile_extra';
 
-const PROFILE_KEY = 'lifecompass_profile';
-
-const loadProfile = (): UserProfile => {
+const loadExtra = (): { age: string; field: string } => {
   try {
-    const saved = localStorage.getItem(PROFILE_KEY);
-    if (saved) return { ...defaultProfile, ...JSON.parse(saved) };
+    const saved = localStorage.getItem(EXTRA_KEY);
+    if (saved) return JSON.parse(saved);
   } catch {}
-  return defaultProfile;
+  return { age: '', field: '' };
 };
 
-const saveProfile = (profile: UserProfile) => {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+const saveExtra = (data: { age: string; field: string }) => {
+  localStorage.setItem(EXTRA_KEY, JSON.stringify(data));
 };
 
 export const Profile: React.FC = () => {
+  const { user, updateProfile } = useAuth();
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
-  const [profile, setProfile] = useState<UserProfile>(loadProfile);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<UserProfile>(profile);
+  const extra = loadExtra();
+  const [editForm, setEditForm] = useState<ProfileForm>({
+    name: user?.name || '',
+    age: extra.age,
+    field: extra.field,
+    university: user?.university || '',
+  });
+
+  const historyCount = user ? getHistory(user.id).length : 0;
 
   useEffect(() => {
-    setEditForm(profile);
-  }, [profile]);
+    setEditForm({
+      name: user?.name || '',
+      age: extra.age,
+      field: extra.field,
+      university: user?.university || '',
+    });
+  }, [user]);
 
   const toggleDark = () => {
     const next = !isDark;
@@ -49,13 +55,18 @@ export const Profile: React.FC = () => {
   };
 
   const handleSave = () => {
-    saveProfile(editForm);
-    setProfile(editForm);
+    updateProfile({ name: editForm.name, university: editForm.university });
+    saveExtra({ age: editForm.age, field: editForm.field });
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    setEditForm(profile);
+    setEditForm({
+      name: user?.name || '',
+      age: extra.age,
+      field: extra.field,
+      university: user?.university || '',
+    });
     setIsEditing(false);
   };
 
@@ -72,23 +83,27 @@ export const Profile: React.FC = () => {
         <div className="relative group">
             <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center border-4 border-white dark:border-[#28323a] shadow-lg">
               <span className="text-white text-3xl lg:text-4xl font-bold">
-                {profile.name ? profile.name.charAt(0).toUpperCase() : 'П'}
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'П'}
               </span>
             </div>
         </div>
         <div className="flex flex-col items-center md:items-start flex-1 gap-2 pt-2">
             <div className="text-center md:text-left">
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {profile.name || 'Пользователь'}
+                  {user?.name || 'Пользователь'}
                 </h2>
                 <p className="text-slate-500 dark:text-[#99b1c2]">
-                  {profile.email || 'Укажите email в настройках'}
+                  {user?.email || '—'}
                 </p>
             </div>
             <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-1">
                 <span className="px-3 py-1 rounded-full bg-primary/10 text-xs font-medium text-primary border border-primary/20 flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">school</span>
-                    LifeCompass Uni
+                    {user?.university || 'LifeCompass Uni'}
+                </span>
+                <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-xs font-medium text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">history</span>
+                    {historyCount} тестов пройдено
                 </span>
             </div>
         </div>
@@ -138,10 +153,9 @@ export const Profile: React.FC = () => {
                         <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">Email</label>
                         <input
                           type="email"
-                          value={editForm.email}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#131b20] text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all"
-                          placeholder="email@example.com"
+                          value={user?.email || ''}
+                          disabled
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#0e1419] text-slate-400 text-sm cursor-not-allowed"
                         />
                       </div>
                       <div>
@@ -168,8 +182,8 @@ export const Profile: React.FC = () => {
                         <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">Университет / Город</label>
                         <input
                           type="text"
-                          value={editForm.location}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
+                          value={editForm.university}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, university: e.target.value }))}
                           className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#131b20] text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                           placeholder="КазНУ, Алматы"
                         />
@@ -193,15 +207,15 @@ export const Profile: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
                         <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">Возраст</span>
-                        <p className="text-base text-slate-900 dark:text-white">{profile.age || 'Не указан'}</p>
+                        <p className="text-base text-slate-900 dark:text-white">{extra.age || 'Не указан'}</p>
                       </div>
                       <div>
                         <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">Специальность</span>
-                        <p className="text-base text-slate-900 dark:text-white">{profile.field || 'Не указана'}</p>
+                        <p className="text-base text-slate-900 dark:text-white">{extra.field || 'Не указана'}</p>
                       </div>
                       <div>
                         <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">Университет / Город</span>
-                        <p className="text-base text-slate-900 dark:text-white">{profile.location || 'Не указан'}</p>
+                        <p className="text-base text-slate-900 dark:text-white">{user?.university || 'Не указан'}</p>
                       </div>
                     </div>
                   )}
