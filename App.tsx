@@ -23,10 +23,12 @@ const App: React.FC = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
-            {/* Protected */}
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/assessment/:id" element={<ProtectedRoute><Assessment /></ProtectedRoute>} />
-            <Route path="/results/:id" element={<ProtectedRoute><Results /></ProtectedRoute>} />
+            {/* Open for all (guest + auth) */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/assessment/:id" element={<Assessment />} />
+            <Route path="/results/:id" element={<Results />} />
+
+            {/* Auth required */}
             <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 

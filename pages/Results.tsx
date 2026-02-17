@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { RadarChart } from '../components/RadarChart';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { Answer, ChartDataPoint, Message } from '../types';
 import { getAssessmentById } from '../services/assessmentData';
 import { generateQuizAnalysis, generateChatAnalysis } from '../services/geminiService';
+import { saveResult } from '../services/historyService';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ResultState {
     archetype: string;
@@ -15,10 +17,13 @@ interface ResultState {
 export const Results: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const { user } = useAuth();
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [result, setResult] = useState<ResultState | null>(null);
   const [loading, setLoading] = useState(true);
   const [assessmentTitle, setAssessmentTitle] = useState("Результаты");
+  const [saved, setSaved] = useState(false);
+  const savedRef = useRef(false);
 
   useEffect(() => {
     const processResults = async () => {
@@ -27,6 +32,16 @@ export const Results: React.FC = () => {
         const assessment = getAssessmentById(assessmentId || '');
 
         if (assessment) setAssessmentTitle(assessment.title);
+
+        // --- PATH 0: FROM HISTORY (pre-computed) ---
+        if (state.fromHistory && state.savedScores && state.savedResult) {
+            setChartData(state.savedScores);
+            setResult(state.savedResult);
+            setSaved(true);
+            savedRef.current = true;
+            setLoading(false);
+            return;
+        }
 
         // --- PATH A: QUIZ RESULTS (Structured Answers) ---
         if (state.answers && state.answers.length > 0) {
@@ -119,6 +134,25 @@ export const Results: React.FC = () => {
     processResults();
   }, [location, id]);
 
+  // Save to history for authenticated users
+  useEffect(() => {
+    if (!user || !result || chartData.length === 0 || savedRef.current) return;
+    const state = location.state || {};
+    const assessmentId = state.assessmentId || id || '';
+    const assessment = getAssessmentById(assessmentId);
+    if (!assessment) return;
+
+    savedRef.current = true;
+    saveResult(user.id, {
+      assessmentId,
+      assessmentTitle: assessment.title,
+      type: assessment.type,
+      scores: chartData,
+      result,
+    });
+    setSaved(true);
+  }, [user, result, chartData, location, id]);
+
   if (loading) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#131b20]">
@@ -175,7 +209,7 @@ export const Results: React.FC = () => {
             <p className="text-slate-600 dark:text-[#d0dbe5] text-lg leading-relaxed mb-8 max-w-2xl">
                 {result?.summary}
             </p>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 items-center">
                 <Link to="/dashboard" className="flex items-center justify-center gap-2 rounded-xl h-12 px-6 bg-primary hover:bg-primary/90 transition-colors text-white font-bold shadow-[0_0_20px_rgba(46,135,194,0.3)]">
                     <span className="material-symbols-outlined">refresh</span>
                     <span>Новый тест</span>
@@ -184,7 +218,21 @@ export const Results: React.FC = () => {
                     <span className="material-symbols-outlined">home</span>
                     <span>На главную</span>
                 </Link>
+                {saved && (
+                  <span className="flex items-center gap-1 text-emerald-500 text-sm font-medium">
+                    <span className="material-symbols-outlined text-lg">check_circle</span>
+                    Сохранено в историю
+                  </span>
+                )}
             </div>
+            {!user && (
+              <div className="mt-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/50 text-sm flex items-center gap-3">
+                <span className="material-symbols-outlined text-amber-500">info</span>
+                <span className="text-amber-700 dark:text-amber-300">
+                  Результат не сохранён. <Link to="/register" className="text-primary font-medium hover:underline">Зарегистрируйтесь</Link>, чтобы вести историю прогресса.
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -13,7 +13,7 @@ export const Register: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -31,15 +31,16 @@ export const Register: React.FC = () => {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      const result = register(name, email, password, university || undefined);
+    try {
+      const result = await register(name, email, password, university || undefined);
       if (result.success) {
         navigate('/dashboard');
       } else {
         setError(result.error || 'Ошибка регистрации');
       }
+    } finally {
       setLoading(false);
-    }, 400);
+    }
   };
 
   return (

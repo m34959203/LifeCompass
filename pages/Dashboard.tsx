@@ -1,12 +1,35 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { getAllAssessments } from '../services/assessmentData';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Dashboard: React.FC = () => {
   const assessments = getAllAssessments();
+  const { isAuthenticated } = useAuth();
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8 md:px-10 md:py-10">
+      {/* Guest banner */}
+      {!isAuthenticated && (
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-primary/10 to-emerald-500/10 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex items-center gap-3 flex-1">
+            <span className="material-symbols-outlined text-primary text-2xl">person_add</span>
+            <div>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">Вы в гостевом режиме</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Тесты доступны, но результаты не сохраняются. Зарегистрируйтесь для ведения истории.</p>
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Link to="/register" className="px-4 py-2 rounded-lg bg-primary hover:bg-blue-600 text-white text-sm font-bold transition-colors">
+              Регистрация
+            </Link>
+            <Link to="/login" className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#283843] text-sm font-medium transition-colors">
+              Войти
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="mb-10 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
