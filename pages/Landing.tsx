@@ -1,7 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { getAllAssessments } from '../services/assessmentData';
 
 export const Landing: React.FC = () => {
+  const assessments = getAllAssessments();
+
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden text-slate-900 dark:text-white">
       {/* Header */}
@@ -14,9 +21,9 @@ export const Landing: React.FC = () => {
         </div>
         <div className="flex flex-1 justify-end gap-8">
           <div className="hidden md:flex items-center gap-9">
-            <a href="#features" className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">Абитуриентам</a>
-            <a href="#how-it-works" className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">Студентам</a>
-            <a href="#pricing" className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">Вузам</a>
+            <button onClick={() => scrollTo('features')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">Абитуриентам</button>
+            <button onClick={() => scrollTo('how-it-works')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">Студентам</button>
+            <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">Вузам</button>
           </div>
           <Link to="/dashboard" className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-6 bg-primary hover:bg-primary/90 transition-colors text-white text-sm font-bold shadow-md shadow-primary/20">
             Личный кабинет
@@ -44,7 +51,7 @@ export const Landing: React.FC = () => {
                         <span>Начать диагностику</span>
                         <span className="material-symbols-outlined ml-2 text-sm">arrow_forward</span>
                     </Link>
-                    <button className="flex items-center justify-center rounded-xl h-12 px-8 bg-white dark:bg-[#1d2830] border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-colors text-slate-900 dark:text-white text-base font-bold shadow-sm">
+                    <button onClick={() => scrollTo('for-universities')} className="flex items-center justify-center rounded-xl h-12 px-8 bg-white dark:bg-[#1d2830] border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-colors text-slate-900 dark:text-white text-base font-bold shadow-sm">
                         <span>Для учебных заведений</span>
                     </button>
                 </div>
@@ -156,29 +163,25 @@ export const Landing: React.FC = () => {
             <p className="text-slate-500 text-base font-normal max-w-[600px]">Каждая методика направлена на раскрытие определённого аспекта вашей личности.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
-            {[
-              { title: 'Профориентация RIASEC', type: 'Тест', icon: 'work_history', gradient: 'from-blue-500 to-indigo-600', desc: 'Определите ваш профессиональный тип по классификации Холланда.' },
-              { title: 'Тип личности Big 5', type: 'Тест', icon: 'psychology', gradient: 'from-purple-500 to-fuchsia-600', desc: 'Научная оценка 5 главных черт: экстраверсия, открытость и другие.' },
-              { title: 'Soft Skills 360', type: 'AI Диалог', icon: 'handshake', gradient: 'from-slate-500 to-slate-700', desc: 'Ситуативный тест на коммуникацию и эмоциональный интеллект.' },
-              { title: 'Диагностика выгорания', type: 'AI Диалог', icon: 'battery_alert', gradient: 'from-orange-500 to-red-500', desc: 'Мягкая беседа для оценки уровня стресса и выгорания.' },
-              { title: 'Мотивация и ценности', type: 'AI Диалог', icon: 'diamond', gradient: 'from-emerald-500 to-teal-600', desc: 'Поиск истинных драйверов вашей жизни через глубокий диалог.' },
-              { title: 'Эмоциональный интеллект', type: 'Тест', icon: 'favorite', gradient: 'from-rose-500 to-pink-600', desc: 'Оценка способности распознавать и управлять эмоциями.' },
-              { title: 'Стиль обучения', type: 'AI Диалог', icon: 'school', gradient: 'from-cyan-500 to-blue-600', desc: 'Определите, как вы лучше всего усваиваете информацию.' },
-            ].map((item, i) => (
-              <div key={i} className={`flex flex-col rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-background-light dark:bg-[#1d2830] hover:shadow-lg transition-all duration-300`}>
+            {assessments.map((item, i) => (
+              <Link key={item.id} to={`/assessment/${item.id}`} className={`flex flex-col rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-background-light dark:bg-[#1d2830] hover:shadow-lg hover:-translate-y-1 transition-all duration-300`}>
                 <div className={`h-20 bg-gradient-to-r ${item.gradient} relative`}>
                   <div className="absolute top-3 left-4 w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30">
                     <span className="material-symbols-outlined text-xl">{item.icon}</span>
                   </div>
                   <div className="absolute top-3 right-3 bg-black/20 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border border-white/10">
-                    {item.type}
+                    {item.type === 'chat' ? 'AI Диалог' : 'Тест'}
                   </div>
                 </div>
                 <div className="p-5">
-                  <h3 className="text-base font-bold mb-2">{item.title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">{item.desc}</p>
+                  <h3 className="text-base font-bold mb-1">{item.title}</h3>
+                  <p className="text-slate-500 text-sm leading-relaxed mb-3">{item.description}</p>
+                  <div className="flex items-center gap-1 text-primary text-xs font-medium">
+                    <span>{item.type === 'chat' ? 'Начать беседу' : `${item.questions?.length} вопросов`}</span>
+                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                  </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
           <Link
@@ -191,6 +194,68 @@ export const Landing: React.FC = () => {
         </div>
       </section>
 
+      {/* For Universities */}
+      <section className="px-6 py-16 bg-background-light dark:bg-background-dark" id="for-universities">
+        <div className="max-w-[1200px] mx-auto">
+          <div className="flex flex-col lg:flex-row gap-10 items-center">
+            <div className="lg:w-1/2 flex flex-col gap-6">
+              <h2 className="text-primary font-bold tracking-wider uppercase text-sm">Для вузов</h2>
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight">Интегрируйте диагностику в учебный процесс</h1>
+              <p className="text-slate-500 text-base leading-relaxed">
+                LifeCompass Uni помогает университетам системно оценивать профориентационную готовность абитуриентов,
+                отслеживать развитие soft skills студентов и снижать процент отчислений.
+              </p>
+              <div className="flex flex-col gap-4">
+                {[
+                  { icon: 'group', text: 'Массовая диагностика абитуриентов при поступлении' },
+                  { icon: 'monitoring', text: 'Мониторинг развития компетенций студентов' },
+                  { icon: 'psychology', text: 'Раннее выявление академического выгорания' },
+                  { icon: 'analytics', text: 'Аналитика и отчёты для деканатов' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                      <span className="material-symbols-outlined text-lg">{item.icon}</span>
+                    </div>
+                    <span className="text-slate-700 dark:text-slate-300 text-sm">{item.text}</span>
+                  </div>
+                ))}
+              </div>
+              <a href="mailto:contact@lifecompass.uni" className="inline-flex items-center gap-2 mt-2 px-6 py-3 rounded-xl bg-primary hover:bg-blue-600 text-white font-bold transition-colors shadow-lg shadow-primary/30 w-fit">
+                <span className="material-symbols-outlined text-lg">mail</span>
+                Связаться с нами
+              </a>
+            </div>
+            <div className="lg:w-1/2 w-full">
+              <div className="bg-white dark:bg-[#1e272e] rounded-2xl border border-slate-200 dark:border-slate-700 p-8 shadow-lg">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <span className="material-symbols-outlined text-2xl">apartment</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg">Тариф для университетов</h3>
+                    <p className="text-slate-500 text-sm">Индивидуальные условия</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  {[
+                    'Неограниченное число студентов',
+                    'Панель администратора для преподавателей',
+                    'Групповая аналитика и экспорт отчётов',
+                    'Интеграция с LMS (Moodle, Canvas)',
+                    'Приоритетная техническая поддержка',
+                  ].map((feature, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-lg text-emerald-500">check_circle</span>
+                      <span className="text-slate-700 dark:text-slate-300 text-sm">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-white dark:bg-[#131b20] border-t border-slate-200 dark:border-[#283843] py-12 px-6">
         <div className="max-w-[1200px] mx-auto">
@@ -200,16 +265,33 @@ export const Landing: React.FC = () => {
                     <span className="material-symbols-outlined text-2xl text-primary">school</span>
                     <h3 className="text-lg font-bold">LifeCompass Uni</h3>
                 </div>
-                <p className="text-slate-500 text-sm leading-relaxed">Система поддержки принятия карьерных решений.</p>
+                <p className="text-slate-500 text-sm leading-relaxed">Система поддержки принятия карьерных решений для абитуриентов и студентов.</p>
             </div>
-            {['Студентам', 'Университетам', 'Партнеры'].map(col => (
-                <div key={col} className="flex flex-col gap-4">
-                    <h4 className="font-bold">{col}</h4>
-                    {['О методике', 'Конфиденциальность', 'Контакты'].map((link, i) => (
-                        <a key={i} href="#" className="text-slate-500 hover:text-primary text-sm transition-colors">{link}</a>
-                    ))}
-                </div>
-            ))}
+            <div className="flex flex-col gap-3">
+                <h4 className="font-bold text-sm">Студентам</h4>
+                <Link to="/dashboard" className="text-slate-500 hover:text-primary text-sm transition-colors">Все тесты</Link>
+                <button onClick={() => scrollTo('assessments')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">Методики</button>
+                <button onClick={() => scrollTo('how-it-works')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">Как это работает</button>
+            </div>
+            <div className="flex flex-col gap-3">
+                <h4 className="font-bold text-sm">Университетам</h4>
+                <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">О платформе</button>
+                <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">Тарифы</button>
+                <a href="mailto:contact@lifecompass.uni" className="text-slate-500 hover:text-primary text-sm transition-colors">Связаться</a>
+            </div>
+            <div className="flex flex-col gap-3">
+                <h4 className="font-bold text-sm">Продукт</h4>
+                <Link to="/profile" className="text-slate-500 hover:text-primary text-sm transition-colors">Профиль</Link>
+                <Link to="/history" className="text-slate-500 hover:text-primary text-sm transition-colors">История тестов</Link>
+                <button onClick={() => scrollTo('features')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">Возможности</button>
+            </div>
+          </div>
+          <div className="border-t border-slate-200 dark:border-[#283843] pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-slate-400 text-xs">LifeCompass Uni. Все данные хранятся локально на вашем устройстве.</p>
+            <div className="flex items-center gap-4 text-xs text-slate-400">
+              <span>Казахстан</span>
+              <span>RU</span>
+            </div>
           </div>
         </div>
       </footer>

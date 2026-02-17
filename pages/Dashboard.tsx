@@ -11,7 +11,7 @@ export const Dashboard: React.FC = () => {
       <header className="mb-10 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white md:text-4xl">
-             LifeCompass AI
+             LifeCompass Uni
           </h1>
           <p className="mt-2 text-lg text-slate-600 dark:text-slate-400 max-w-2xl">
             Гибридная платформа диагностики. Выбирайте между точными тестами и глубоким диалогом с ИИ.
@@ -44,10 +44,24 @@ export const Dashboard: React.FC = () => {
 
               <div className="flex flex-1 flex-col p-6 pt-4">
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{test.title}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 flex-1 leading-relaxed mb-6">
+                <p className="text-sm text-slate-500 dark:text-slate-400 flex-1 leading-relaxed mb-4">
                     {test.description}
                 </p>
-                
+
+                {/* Meta info */}
+                <div className="flex items-center gap-3 mb-4 text-xs text-slate-400 dark:text-slate-500">
+                  {test.type === 'quiz' && test.questions && (
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">help_outline</span>
+                      {test.questions.length} вопросов
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">schedule</span>
+                    {test.type === 'chat' ? '~10 мин' : `~${Math.ceil((test.questions?.length || 10) * 0.4)} мин`}
+                  </span>
+                </div>
+
                 <Link 
                     to={`/assessment/${test.id}`} 
                     className="mt-auto flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-slate-50 dark:bg-[#25323b] hover:bg-primary hover:text-white dark:hover:bg-primary text-slate-700 dark:text-slate-200 text-sm font-bold transition-all group-hover:shadow-md"

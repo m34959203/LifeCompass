@@ -3,14 +3,24 @@ import { Message } from '../types';
 
 // Initialize the SDK
 // API KEY is strictly from process.env.API_KEY as per instructions
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = process.env.API_KEY || '';
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 let chatSession: any = null;
+
+/** Check if the Gemini API is configured */
+export const isApiConfigured = (): boolean => {
+  return !!apiKey && !!ai;
+};
 
 /**
  * Starts a new chat session with a specific persona (System Instruction)
  */
 export const startChatSession = async (modelName: string, systemInstruction: string) => {
+  if (!ai) {
+    throw new Error("API_KEY_MISSING");
+  }
+
   try {
     const modelId = 'gemini-3-flash-preview';
 
@@ -59,6 +69,15 @@ export const generateQuizAnalysis = async (assessmentTitle: string, scores: Reco
     careers: string[];
     strengths: string[];
 }> => {
+  if (!ai) {
+    return {
+      archetype: "API не настроен",
+      summary: "Для получения AI-анализа необходимо указать GEMINI_API_KEY в файле .env. Без него доступны только локальные результаты (баллы по категориям).",
+      careers: ["Настройте API ключ", "для получения", "рекомендаций"],
+      strengths: ["Баллы рассчитаны", "локально"]
+    };
+  }
+
   try {
     const prompt = `
       Analyze the following ${assessmentTitle} results (0-100 scale per category):
@@ -98,7 +117,7 @@ export const generateQuizAnalysis = async (assessmentTitle: string, scores: Reco
       console.error("Analysis generation failed:", error);
       return {
           archetype: "Анализ недоступен",
-          summary: "Не удалось сгенерировать описание.",
+          summary: "Не удалось сгенерировать описание. Проверьте подключение к интернету и API-ключ.",
           careers: ["-", "-", "-"],
           strengths: ["-", "-"]
       };
@@ -115,6 +134,16 @@ export const generateChatAnalysis = async (assessmentTitle: string, messages: Me
     careers: string[];
     strengths: string[];
 }> => {
+  if (!ai) {
+    return {
+      scores: {},
+      archetype: "API не настроен",
+      summary: "Для анализа диалога необходимо указать GEMINI_API_KEY в файле .env.",
+      careers: [],
+      strengths: []
+    };
+  }
+
   try {
     const transcript = messages
         .map(m => `${m.role === 'user' ? 'User' : 'AI Mentor'}: ${m.text}`)
@@ -168,7 +197,7 @@ export const generateChatAnalysis = async (assessmentTitle: string, messages: Me
       return {
           scores: { "Participation": 100, "Completeness": 50 },
           archetype: "Данные не обработаны",
-          summary: "Произошла ошибка при анализе диалога.",
+          summary: "Произошла ошибка при анализе диалога. Проверьте подключение к интернету.",
           careers: [],
           strengths: []
       };

@@ -52,9 +52,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <div className="flex items-center justify-between px-2">
             <Link to="/dashboard" className="flex items-center gap-3" onClick={handleLinkClick}>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 text-primary">
-                <span className="material-symbols-outlined text-3xl">explore</span>
+                <span className="material-symbols-outlined text-3xl">school</span>
               </div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">LifeCompass</h2>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">LifeCompass Uni</h2>
             </Link>
             {/* Mobile Close Button */}
             <button
