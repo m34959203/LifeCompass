@@ -1,87 +1,147 @@
 import { AssessmentConfig, QuestionOption } from '../types';
 
-/**
- * DOCUMENTATION:
- * Этот файл содержит статическую базу данных всех диагностических методик.
- * 
- * Чтобы добавить новый тест:
- * 1. Определите новый набор options (если стандартные не подходят).
- * 2. Добавьте новый ключ в объект assessmentsDatabase.
- * 3. Убедитесь, что ID теста совпадает с ID в UI (pages/Dashboard.tsx).
- */
-
-// Опции: Согласие (1-5)
+// Стандартные опции для квизов (Шкала Лайкерта)
 const agreementOptions: QuestionOption[] = [
-  { value: 1, label: "Категорически не согласен", color: "bg-red-100 text-red-700 border-red-200" },
-  { value: 2, label: "Скорее не согласен", color: "bg-orange-100 text-orange-700 border-orange-200" },
-  { value: 3, label: "Нейтрально / Затрудняюсь", color: "bg-slate-100 text-slate-700 border-slate-200" },
-  { value: 4, label: "Скорее согласен", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  { value: 5, label: "Полностью согласен", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-];
-
-// Опции: Частота (1-5)
-const frequencyOptions: QuestionOption[] = [
-  { value: 1, label: "Никогда", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  { value: 2, label: "Редко", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  { value: 3, label: "Иногда", color: "bg-slate-100 text-slate-700 border-slate-200" },
-  { value: 4, label: "Часто", color: "bg-orange-100 text-orange-700 border-orange-200" },
-  { value: 5, label: "Постоянно", color: "bg-red-100 text-red-700 border-red-200" },
+  { value: 1, label: "Не согласен", color: "bg-red-50 text-red-600 border-red-200" },
+  { value: 2, label: "Скорее нет", color: "bg-orange-50 text-orange-600 border-orange-200" },
+  { value: 3, label: "Нейтрально", color: "bg-slate-50 text-slate-600 border-slate-200" },
+  { value: 4, label: "Скорее да", color: "bg-blue-50 text-blue-600 border-blue-200" },
+  { value: 5, label: "Полностью согласен", color: "bg-emerald-50 text-emerald-600 border-emerald-200" },
 ];
 
 const assessmentsDatabase: Record<string, AssessmentConfig> = {
-  // 1. КАРЬЕРА (RIASEC)
+  // 1. ПРОФОРИЕНТАЦИЯ (RIASEC) -> СТРУКТУРИРОВАННЫЙ КВИЗ
   "career-riasec": {
     id: "career-riasec",
-    title: "Профессиональные склонности (RIASEC)",
-    description: "Определите свой профессиональный тип личности по методике Холланда.",
+    type: "quiz",
+    title: "Профориентация (RIASEC)",
+    description: "Классический тест Холланда. Определяет ваш профессиональный тип личности.",
+    icon: "work_history",
+    gradient: "from-blue-500 to-indigo-600",
     questions: [
-      { id: 101, text: "Мне нравится работать с инструментами и механизмами.", category: "Реалистичный", options: agreementOptions },
-      { id: 102, text: "Я люблю решать математические или логические задачи.", category: "Интеллектуальный", options: agreementOptions },
-      { id: 103, text: "Мне важно выражать себя через творчество (письмо, рисование, музыка).", category: "Артистичный", options: agreementOptions },
-      { id: 104, text: "Я люблю обучать других людей или помогать им в развитии.", category: "Социальный", options: agreementOptions },
-      { id: 105, text: "Мне нравится лидировать и убеждать людей.", category: "Предприимчивый", options: agreementOptions },
-      { id: 106, text: "Я предпочитаю четкие инструкции и работу с документами.", category: "Конвенциональный", options: agreementOptions }
+      // Realistic (R)
+      { id: 1, text: "Мне нравится ремонтировать технику или собирать мебель.", category: "Реалистичный", options: agreementOptions },
+      { id: 7, text: "Я предпочту работу на свежем воздухе работе в офисе.", category: "Реалистичный", options: agreementOptions },
+      { id: 9, text: "Я умею обращаться с инструментами и механизмами.", category: "Реалистичный", options: agreementOptions },
+      
+      // Investigative (I)
+      { id: 2, text: "Я люблю решать сложные математические задачи.", category: "Интеллектуальный", options: agreementOptions },
+      { id: 8, text: "Я люблю изучать научные факты и теории.", category: "Интеллектуальный", options: agreementOptions },
+      { id: 10, text: "Мне нравится анализировать данные и искать закономерности.", category: "Интеллектуальный", options: agreementOptions },
+
+      // Artistic (A)
+      { id: 3, text: "Мне важно выражать себя через искусство (музыка, письмо, дизайн).", category: "Артистичный", options: agreementOptions },
+      { id: 11, text: "У меня богатое воображение и нестандартный взгляд на вещи.", category: "Артистичный", options: agreementOptions },
+      { id: 12, text: "Меня привлекает творческая свобода больше, чем четкие правила.", category: "Артистичный", options: agreementOptions },
+
+      // Social (S)
+      { id: 4, text: "Я люблю помогать людям решать их личные проблемы.", category: "Социальный", options: agreementOptions },
+      { id: 13, text: "Мне легко находить общий язык с новыми людьми.", category: "Социальный", options: agreementOptions },
+      { id: 14, text: "Я предпочитаю работу в команде индивидуальной работе.", category: "Социальный", options: agreementOptions },
+
+      // Enterprising (E)
+      { id: 5, text: "Мне нравится убеждать людей и продавать идеи.", category: "Предприимчивый", options: agreementOptions },
+      { id: 15, text: "Я готов брать на себя ответственность и риски ради успеха.", category: "Предприимчивый", options: agreementOptions },
+      { id: 16, text: "Я амбициозен и стремлюсь к руководящим позициям.", category: "Предприимчивый", options: agreementOptions },
+
+      // Conventional (C)
+      { id: 6, text: "Я предпочитаю работать с документами и четкими инструкциями.", category: "Конвенциональный", options: agreementOptions },
+      { id: 17, text: "Я люблю порядок, систематизацию и планирование.", category: "Конвенциональный", options: agreementOptions },
+      { id: 18, text: "Я внимателен к деталям и редко допускаю ошибки в расчетах.", category: "Конвенциональный", options: agreementOptions }
     ]
   },
 
-  // 2. ЛИЧНОСТЬ (Big Five / OCEAN)
+  // 2. ТИП ЛИЧНОСТИ (Big Five) -> СТРУКТУРИРОВАННЫЙ КВИЗ
   "personality-big5": {
     id: "personality-big5",
-    title: "Личностный профиль (Big Five)",
-    description: "Глубокий анализ черт характера: открытость, добросовестность, экстраверсия.",
+    type: "quiz",
+    title: "Тип личности (Big 5)",
+    description: "Научная оценка 5 главных черт характера: Экстраверсия, Открытость и др.",
+    icon: "psychology",
+    gradient: "from-purple-500 to-fuchsia-600",
     questions: [
-      { id: 201, text: "Я – душа компании, люблю быть в центре внимания.", category: "Экстраверсия", options: agreementOptions },
-      { id: 202, text: "Я всегда готовлюсь ко всему заранее и следую плану.", category: "Добросовестность", options: agreementOptions },
-      { id: 203, text: "У меня богатое воображение и я люблю пробовать новое.", category: "Открытость", options: agreementOptions },
-      { id: 204, text: "Я легко расстраиваюсь или поддаюсь стрессу.", category: "Нейротизм", options: agreementOptions },
-      { id: 205, text: "Я стараюсь видеть в людях только хорошее и помогать им.", category: "Доброжелательность", options: agreementOptions }
+      // Extraversion
+      { id: 101, text: "Я часто чувствую себя душой компании.", category: "Экстраверсия", options: agreementOptions },
+      { id: 106, text: "Я заряжаюсь энергией от общения с людьми.", category: "Экстраверсия", options: agreementOptions },
+      { id: 107, text: "Я не боюсь быть в центре внимания.", category: "Экстраверсия", options: agreementOptions },
+
+      // Conscientiousness
+      { id: 102, text: "Я всегда готовлюсь ко всему заранее.", category: "Добросовестность", options: agreementOptions },
+      { id: 108, text: "Я всегда довожу начатое дело до конца.", category: "Добросовестность", options: agreementOptions },
+      { id: 109, text: "Я люблю порядок и следую расписанию.", category: "Добросовестность", options: agreementOptions },
+
+      // Openness
+      { id: 103, text: "У меня богатое воображение.", category: "Открытость", options: agreementOptions },
+      { id: 110, text: "Мне нравится пробовать новое (еда, хобби, путешествия).", category: "Открытость", options: agreementOptions },
+      { id: 111, text: "Меня интересуют абстрактные идеи и искусство.", category: "Открытость", options: agreementOptions },
+
+      // Neuroticism
+      { id: 104, text: "Я легко расстраиваюсь из-за мелочей.", category: "Нейротизм", options: agreementOptions },
+      { id: 112, text: "Я часто беспокоюсь о будущем.", category: "Нейротизм", options: agreementOptions },
+      { id: 113, text: "У меня часто меняется настроение.", category: "Нейротизм", options: agreementOptions },
+
+      // Agreeableness
+      { id: 105, text: "Я верю в лучшее в людях.", category: "Доброжелательность", options: agreementOptions },
+      { id: 114, text: "Я стараюсь избегать конфликтов.", category: "Доброжелательность", options: agreementOptions },
+      { id: 115, text: "Мне нравится заботиться о благополучии других.", category: "Доброжелательность", options: agreementOptions }
     ]
   },
 
-  // 3. ЗДОРОВЬЕ (Выгорание)
-  "health-burnout": {
-    id: "health-burnout",
-    title: "Уровень профессионального выгорания",
-    description: "Оценка эмоционального истощения и уровня стресса на работе.",
-    questions: [
-      { id: 301, text: "Я чувствую себя эмоционально опустошенным после работы.", category: "Истощение", options: frequencyOptions },
-      { id: 302, text: "У меня возникает чувство безразличия к результатам моего труда.", category: "Цинизм", options: frequencyOptions },
-      { id: 303, text: "Мне кажется, что я мало чего достигаю на своей должности.", category: "Редукция достижений", options: frequencyOptions },
-      { id: 304, text: "Я чувствую усталость сразу после пробуждения, думая о работе.", category: "Истощение", options: frequencyOptions }
-    ]
+  // 3. SOFT SKILLS 360 -> AI СИТУАТИВНЫЙ ТЕСТ
+  "soft-skills-360": {
+    id: "soft-skills-360",
+    type: "chat",
+    title: "Soft Skills 360",
+    description: "Практический разбор рабочих кейсов для оценки коммуникации и эмоционального интеллекта.",
+    icon: "handshake",
+    gradient: "from-slate-500 to-slate-700",
+    initialMessage: "Привет! Чтобы оценить твои Soft Skills, давай поиграем. Я буду описывать сложные рабочие ситуации, а ты расскажи, как бы ты поступил. Начнем?",
+    systemInstruction: `
+      Ты — эксперт по оценке персонала (HR-партнер). Твоя задача — провести Ситуационный Тест (Situational Judgment Test).
+      
+      Алгоритм:
+      1. Предложи конкретную конфликтную или сложную ситуацию (например: "Коллега публично раскритиковал твою идею на совещании", "Ты понимаешь, что не успеваешь сдать проект к дедлайну", "Клиент требует невозможного").
+      2. Спроси пользователя: "Твои действия?"
+      3. Проанализируй ответ с точки зрения: Эмоционального интеллекта, Ассертивности (уверенности), Навыков переговоров.
+      4. Дай краткую обратную связь (что хорошо, а где риск) и переходи к следующей ситуации.
+      5. После 3 ситуаций подведи итог: какие Soft Skills являются суперсилой пользователя, а что зона роста.
+    `
   },
 
-  // 4. НАВЫКИ (Лидерство)
-  "skills-leadership": {
-    id: "skills-leadership",
-    title: "Лидерский потенциал",
-    description: "Анализ вашего стиля управления и способности вести за собой.",
-    questions: [
-      { id: 401, text: "В кризисной ситуации я быстро принимаю решения и беру ответственность.", category: "Решительность", options: agreementOptions },
-      { id: 402, text: "Я предпочитаю делегировать задачи, доверяя команде.", category: "Делегирование", options: agreementOptions },
-      { id: 403, text: "Мне важно вдохновлять людей общей идеей, а не просто давать указания.", category: "Харизма", options: agreementOptions },
-      { id: 404, text: "Я легко признаю свои ошибки перед коллективом.", category: "Ответственность", options: agreementOptions }
-    ]
+  // 4. СТРЕСС И ВЫГОРАНИЕ -> AI ЧАТ
+  "health-stress": {
+    id: "health-stress",
+    type: "chat",
+    title: "Диагностика выгорания",
+    description: "Мягкая беседа с AI-психологом для оценки уровня стресса.",
+    icon: "battery_alert",
+    gradient: "from-orange-500 to-red-500",
+    initialMessage: "Привет. Я здесь, чтобы выслушать. Часто бывает, что работа начинает забирать слишком много сил. Как ты оцениваешь свой уровень энергии на этой неделе по шкале от 1 до 10?",
+    systemInstruction: `
+      Ты — эмпатичный психолог. Твоя цель — оценить уровень выгорания (Burnout).
+      Задавай вопросы по очереди:
+      1. Физическое истощение (сон, усталость).
+      2. Эмоциональное отстранение (раздражение на коллег, цинизм).
+      3. Ощущение неэффективности (кажется ли работа бессмысленной).
+      
+      Будь аккуратен, не ставь медицинских диагнозов. В конце дай поддержку и 2-3 совета по восстановлению.
+    `
+  },
+  
+  // 5. МОТИВАЦИЯ И ЦЕННОСТИ -> AI ЧАТ
+  "values-motivation": {
+    id: "values-motivation",
+    type: "chat",
+    title: "Мотивация и ценности",
+    description: "Поиск истинных драйверов вашей жизни через диалог.",
+    icon: "diamond",
+    gradient: "from-emerald-500 to-teal-600",
+    initialMessage: "Привет! Давай попробуем заглянуть в будущее. Представь, что тебе не нужно работать ради денег. Чем бы ты занимался?",
+    systemInstruction: `
+      Ты — коуч по личностному росту. 
+      Помоги пользователю найти его ценности (Свобода, Безопасность, Власть, Творчество, Помощь).
+      Задавай глубокие вопросы. Спрашивай "почему?" на ответы пользователя, чтобы докопаться до сути.
+    `
   }
 };
 

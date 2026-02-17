@@ -1,171 +1,258 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { generateAnalysis } from '../services/geminiService';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { startChatSession, sendMessageToAI } from '../services/geminiService';
 import { getAssessmentById } from '../services/assessmentData';
-import { Answer, AssessmentConfig } from '../types';
+import { AssessmentConfig, Message, Answer } from '../types';
 
 export const Assessment: React.FC = () => {
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  
+  const navigate = useNavigate();
   const [assessment, setAssessment] = useState<AssessmentConfig | null>(null);
-  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
-  const [answers, setAnswers] = useState<Answer[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  
+  // -- CHAT STATE --
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // -- QUIZ STATE --
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Answer[]>([]);
+
+  // Init
   useEffect(() => {
-    if (id) {
-      const data = getAssessmentById(id);
-      if (data) {
-        setAssessment(data);
-        setAnswers([]);
-        setCurrentQuestionIdx(0);
-      } else {
-        setError("Тест не найден");
+    const init = async () => {
+      if (id) {
+        const data = getAssessmentById(id);
+        if (data) {
+          setAssessment(data);
+          
+          if (data.type === 'chat') {
+            // Start Gemini Session ONLY for chat
+            try {
+              await startChatSession('gemini-3-flash-preview', data.systemInstruction || '');
+              if (data.initialMessage) {
+                setMessages([{
+                  id: 'init-1',
+                  role: 'model',
+                  text: data.initialMessage,
+                  timestamp: new Date()
+                }]);
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          }
+        }
       }
-    }
+    };
+    init();
   }, [id]);
 
-  if (error) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background-light dark:bg-background-dark">
-        <div className="text-center">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Ошибка</h2>
-            <p className="text-slate-500 mb-4">{error}</p>
-            <Link to="/dashboard" className="px-4 py-2 bg-primary text-white rounded-lg">На главную</Link>
-        </div>
-      </div>
-    );
-  }
+  // -- CHAT HANDLERS --
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  useEffect(() => { if (assessment?.type === 'chat') scrollToBottom(); }, [messages, isTyping, assessment]);
 
-  if (!assessment) {
-     return <div className="h-full bg-background-light dark:bg-background-dark"></div>; // Loading state
-  }
-  
-  const question = assessment.questions[currentQuestionIdx];
-  const progress = ((currentQuestionIdx + 1) / assessment.questions.length) * 100;
-
-  const handleOptionSelect = async (value: number | string) => {
-    // Save answer
-    const newAnswer: Answer = {
-      questionId: question.id,
-      value: value,
-      category: question.category
-    };
+  const handleSendMessage = async () => {
+    if (!inputValue.trim()) return;
+    const userText = inputValue.trim();
+    setInputValue('');
     
-    const updatedAnswers = [...answers, newAnswer];
-    setAnswers(updatedAnswers);
+    setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text: userText, timestamp: new Date() }]);
+    setIsTyping(true);
 
-    // Navigate or Finish
-    if (currentQuestionIdx < assessment.questions.length - 1) {
-      setTimeout(() => {
-          setCurrentQuestionIdx(prev => prev + 1);
-      }, 250); // Small delay for UX
-    } else {
-      finishAssessment(updatedAnswers);
+    try {
+      const responseText = await sendMessageToAI(userText);
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: responseText, timestamp: new Date() }]);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsTyping(false);
     }
   };
 
-  const finishAssessment = async (finalAnswers: Answer[]) => {
-    setIsAnalyzing(true);
-    // Call AI Service
-    await generateAnalysis(finalAnswers);
-    // In a real app, we would pass the result via state or context. 
-    // Here we just navigate to the results page.
-    navigate('/results/1');
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
-  if (isAnalyzing) {
+  // -- QUIZ HANDLERS --
+  const handleQuizAnswer = (value: number | string, category: string) => {
+    if (!assessment?.questions) return;
+    
+    const questionId = assessment.questions[currentQuestionIndex].id;
+    const newAnswer: Answer = { questionId, value, category };
+    
+    // Save answer
+    // Remove previous answer for this question if exists, then add new
+    const filteredAnswers = answers.filter(a => a.questionId !== questionId);
+    const updatedAnswers = [...filteredAnswers, newAnswer];
+    setAnswers(updatedAnswers);
+
+    // Next question or Finish
+    if (currentQuestionIndex < assessment.questions.length - 1) {
+      setTimeout(() => setCurrentQuestionIndex(prev => prev + 1), 250);
+    } else {
+        // FINISH QUIZ
+        // Pass answers to results page
+        setTimeout(() => {
+             navigate(`/results/${id}`, { state: { answers: updatedAnswers, assessmentId: id } });
+        }, 300);
+    }
+  };
+
+  if (!assessment) return <div className="h-full flex items-center justify-center text-slate-400">Загрузка...</div>;
+
+  // --- RENDER HEADER (Common) ---
+  const Header = () => (
+    <header className="flex-none z-20 w-full bg-white dark:bg-[#131b20] border-b border-gray-200 dark:border-[#283843] px-4 py-3 shadow-sm">
+      <div className="flex items-center justify-between max-w-4xl mx-auto">
+          <div className="flex items-center gap-3">
+              <Link to="/dashboard" className="md:hidden text-slate-500 hover:text-slate-700">
+                  <span className="material-symbols-outlined">arrow_back</span>
+              </Link>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white bg-gradient-to-br ${assessment.gradient || 'from-primary to-blue-600'}`}>
+                  <span className="material-symbols-outlined text-xl">{assessment.icon || 'quiz'}</span>
+              </div>
+              <div>
+                  <h1 className="text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                      {assessment.title}
+                  </h1>
+                  <div className="flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${assessment.type === 'chat' ? 'bg-green-500' : 'bg-blue-500'}`}></span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                          {assessment.type === 'chat' ? 'AI-ассистент' : `Вопрос ${currentQuestionIndex + 1} из ${assessment.questions?.length}`}
+                      </span>
+                  </div>
+              </div>
+          </div>
+          <Link to="/dashboard" className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-[#283843] transition-colors">
+              <span className="material-symbols-outlined text-lg">close</span>
+              <span>Выход</span>
+          </Link>
+      </div>
+    </header>
+  );
+
+  // --- RENDER CHAT INTERFACE ---
+  if (assessment.type === 'chat') {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-white dark:bg-[#131b20] px-6 text-center">
-        <div className="relative mb-8 size-24">
-           <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
-           <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
-           <div className="absolute inset-0 flex items-center justify-center">
-             <span className="material-symbols-outlined text-3xl text-primary animate-pulse">psychology</span>
-           </div>
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Обработка результатов...</h2>
-        <p className="text-slate-500 dark:text-slate-400 max-w-md">
-          Система анализирует ваши ответы для формирования профиля по методике: <br/>
-          <span className="font-semibold text-primary">{assessment.title}</span>
-        </p>
+      <div className="flex flex-col h-full bg-[#f0f2f5] dark:bg-[#0b141a] overflow-hidden relative">
+        <Header />
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+          <div className="max-w-3xl mx-auto flex flex-col gap-4">
+             {/* Info Bubble */}
+             <div className="flex justify-center my-4">
+                <span className="bg-slate-200 dark:bg-[#1f2c34] text-slate-600 dark:text-slate-400 text-xs px-3 py-1 rounded-full shadow-sm">
+                    {assessment.description}
+                </span>
+            </div>
+            {messages.map((msg) => (
+                <div key={msg.id} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`flex max-w-[85%] md:max-w-[70%] gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${msg.role === 'user' ? 'bg-indigo-100 text-indigo-600 hidden md:flex' : 'bg-white dark:bg-[#1f2c34] border border-slate-100 dark:border-slate-700 text-primary'}`}>
+                            <span className="material-symbols-outlined text-sm">{msg.role === 'user' ? 'person' : 'smart_toy'}</span>
+                        </div>
+                        <div className={`px-4 py-3 rounded-2xl text-[15px] leading-relaxed shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-white dark:bg-[#1f2c34] text-slate-800 dark:text-slate-100 border border-slate-100 dark:border-[#283843] rounded-bl-none'}`}>
+                            {msg.text}
+                        </div>
+                    </div>
+                </div>
+            ))}
+            {isTyping && (
+                <div className="flex w-full justify-start">
+                     <div className="flex gap-2 ml-10">
+                        <div className="bg-white dark:bg-[#1f2c34] border border-slate-100 dark:border-[#283843] px-4 py-3 rounded-2xl rounded-bl-none flex items-center gap-1.5 h-[46px]">
+                            <div className="w-2 h-2 rounded-full bg-slate-400/60 typing-dot"></div>
+                            <div className="w-2 h-2 rounded-full bg-slate-400/60 typing-dot"></div>
+                            <div className="w-2 h-2 rounded-full bg-slate-400/60 typing-dot"></div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </main>
+        <footer className="flex-none p-4 bg-white dark:bg-[#131b20] border-t border-slate-200 dark:border-[#283843]">
+           <div className="max-w-3xl mx-auto relative flex items-end gap-2">
+            <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ваш ответ..." className="w-full bg-slate-100 dark:bg-[#1f2c34] text-slate-900 dark:text-white rounded-2xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent" disabled={isTyping} />
+            <button onClick={handleSendMessage} disabled={!inputValue.trim() || isTyping} className={`h-[50px] w-[50px] flex items-center justify-center rounded-full transition-all shrink-0 ${inputValue.trim() && !isTyping ? 'bg-primary text-white hover:bg-primary-hover shadow-lg' : 'bg-slate-200 dark:bg-[#283843] text-slate-400 cursor-not-allowed'}`}><span className="material-symbols-outlined">send</span></button>
+          </div>
+        </footer>
       </div>
     );
   }
 
+  // --- RENDER QUIZ INTERFACE ---
+  const question = assessment.questions ? assessment.questions[currentQuestionIndex] : null;
+  const progress = assessment.questions ? ((currentQuestionIndex) / assessment.questions.length) * 100 : 0;
+
   return (
-    <div className="flex flex-col h-full bg-background-light dark:bg-background-dark overflow-hidden">
-      {/* Header */}
-      <header className="flex-none z-20 w-full bg-white dark:bg-[#131b20] border-b border-gray-200 dark:border-[#283843] px-4 py-4 md:px-8">
-        <div className="mx-auto max-w-3xl flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <Link to="/dashboard" className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors">
-                <span className="material-symbols-outlined">close</span>
-                <span className="text-sm font-medium hidden sm:inline">Прервать</span>
-            </Link>
-            
-            <div className="flex flex-col items-center">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  {assessment.title.split('(')[0].trim()}
-                </span>
-                <span className="text-[10px] text-slate-500">Вопрос {currentQuestionIdx + 1} из {assessment.questions.length}</span>
-            </div>
+    <div className="flex flex-col h-full bg-background-light dark:bg-background-dark">
+      <Header />
+      
+      {/* Progress Bar */}
+      <div className="w-full h-1.5 bg-slate-200 dark:bg-[#1f2c34]">
+          <div className="h-full bg-primary transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
+      </div>
 
-            <div className="w-[80px]"></div> {/* Spacer for centering */}
-          </div>
-          
-          {/* Progress Bar */}
-          <div className="w-full h-1.5 bg-gray-100 dark:bg-[#283843] rounded-full overflow-hidden">
-            <div 
-                className="h-full bg-primary rounded-full transition-all duration-500 ease-out" 
-                style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        </div>
-      </header>
-
-      {/* Question Area */}
-      <main className="flex-1 overflow-y-auto px-4 py-8 md:px-8 flex items-center justify-center">
-        <div className="w-full max-w-2xl animate-[fadeIn_0.3s_ease-out]">
-            
-            {/* Context Badge */}
-            <div className="flex justify-center mb-6">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs font-semibold uppercase tracking-wider border border-blue-100 dark:border-blue-900/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col items-center justify-center">
+        <div className="w-full max-w-2xl">
+          {question && (
+            <div className="flex flex-col gap-8 animate-fadeIn">
+              {/* Question Card */}
+              <div className="text-center flex flex-col gap-4">
+                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     {question.category}
-                </span>
-            </div>
+                 </span>
+                 <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white leading-snug">
+                    {question.text}
+                 </h2>
+              </div>
 
-            {/* Question Text */}
-            <h2 className="text-2xl md:text-3xl font-bold text-center text-slate-900 dark:text-white leading-tight mb-10">
-                {question.text}
-            </h2>
-
-            {/* Options List */}
-            <div className="grid gap-3">
-                {question.options.map((option) => (
+              {/* Options */}
+              <div className="grid grid-cols-1 gap-3">
+                 {question.options?.map((opt) => (
                     <button
-                        key={option.value}
-                        onClick={() => handleOptionSelect(option.value)}
-                        className="group relative flex items-center p-4 rounded-xl border-2 border-slate-200 dark:border-[#283843] bg-white dark:bg-[#1e2830] hover:border-primary dark:hover:border-primary hover:bg-slate-50 dark:hover:bg-[#25323b] transition-all duration-200 text-left outline-none focus:ring-2 focus:ring-primary/50"
+                        key={opt.value}
+                        onClick={() => handleQuizAnswer(opt.value, question.category)}
+                        className={`
+                            relative flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-200 group
+                            hover:shadow-md active:scale-[0.98]
+                            bg-white dark:bg-[#1e272e] border-slate-200 dark:border-slate-700
+                            hover:border-primary dark:hover:border-primary
+                        `}
                     >
-                        <div className={`flex items-center justify-center w-8 h-8 rounded-full mr-4 text-sm font-bold border ${option.color ? option.color.replace('text-', 'border-').replace('bg-', 'bg-opacity-20 ') : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                           {option.value}
-                        </div>
-                        <span className="text-base md:text-lg font-medium text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-                            {option.label}
+                        <span className="text-base font-medium text-slate-700 dark:text-white group-hover:text-primary transition-colors">
+                            {opt.label}
                         </span>
+                        <div className={`w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-600 group-hover:border-primary`}></div>
                     </button>
-                ))}
+                 ))}
+              </div>
             </div>
-            
-             <p className="text-center mt-8 text-sm text-slate-400 dark:text-slate-500">
-                Ваши ответы используются только для расчета результатов этого теста.
-            </p>
+          )}
         </div>
       </main>
+
+      {/* Quiz Footer controls */}
+      <footer className="p-6 flex justify-center pb-10">
+         <div className="flex gap-2">
+             <button 
+                onClick={() => currentQuestionIndex > 0 && setCurrentQuestionIndex(prev => prev - 1)}
+                disabled={currentQuestionIndex === 0}
+                className="px-6 py-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-[#1f2c34] disabled:opacity-50 transition-colors"
+             >
+                 Назад
+             </button>
+             <div className="px-6 py-2 text-slate-400 text-sm flex items-center">
+                 {currentQuestionIndex + 1} / {assessment.questions?.length}
+             </div>
+         </div>
+      </footer>
     </div>
   );
 };

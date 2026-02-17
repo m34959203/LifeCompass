@@ -7,33 +7,12 @@ export interface User {
   role: string;
 }
 
-export interface AssessmentModule {
-  id: string;
-  title: string;
-  description: string;
-  icon: string;
-  color: string;
-  duration: string;
-  isNew?: boolean;
-  completed?: boolean;
-}
-
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
-  content: string;
+  role: 'user' | 'model';
+  text: string;
   timestamp: Date;
   isTyping?: boolean;
-}
-
-export interface RecentResult {
-  id: string;
-  title: string;
-  date: string;
-  icon: string;
-  colorClass: string;
-  scoreDisplay: React.ReactNode;
-  summary: string;
 }
 
 export interface ChartDataPoint {
@@ -42,25 +21,36 @@ export interface ChartDataPoint {
   fullMark: number;
 }
 
-// Новые типы для опросников
+export type AssessmentType = 'quiz' | 'chat';
+
 export interface QuestionOption {
   value: number | string;
   label: string;
-  color?: string; // Для визуального выделения
+  color?: string;
 }
 
 export interface Question {
   id: number;
   text: string;
-  category: string; // Например, 'R' (Realistic) для RIASEC
-  options: QuestionOption[];
+  category: string;
+  options?: QuestionOption[]; // Optional, can use global default options
 }
 
 export interface AssessmentConfig {
   id: string;
+  type: AssessmentType; // Determines if it's a structured quiz or AI chat
   title: string;
   description: string;
-  questions: Question[];
+  
+  // For Chat Mode
+  systemInstruction?: string; 
+  initialMessage?: string;
+  
+  // For Quiz Mode
+  questions?: Question[];
+  
+  icon?: string;
+  gradient?: string;
 }
 
 export interface Answer {
