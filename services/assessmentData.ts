@@ -1,5 +1,15 @@
 import { AssessmentConfig, QuestionOption } from '../types';
 
+/**
+ * DOCUMENTATION:
+ * Этот файл содержит статическую базу данных всех диагностических методик.
+ * 
+ * Чтобы добавить новый тест:
+ * 1. Определите новый набор options (если стандартные не подходят).
+ * 2. Добавьте новый ключ в объект assessmentsDatabase.
+ * 3. Убедитесь, что ID теста совпадает с ID в UI (pages/Dashboard.tsx).
+ */
+
 // Опции: Согласие (1-5)
 const agreementOptions: QuestionOption[] = [
   { value: 1, label: "Категорически не согласен", color: "bg-red-100 text-red-700 border-red-200" },

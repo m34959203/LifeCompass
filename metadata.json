@@ -1,5 +1,5 @@
 {
   "name": "LifeCompass AI",
-  "description": "A privacy-focused, professional AI-driven psychological self-diagnosis and career guidance application. All analysis is performed on anonymized data.",
+  "description": "Professional psychological assessment platform featuring RIASEC, Big Five, and Burnout tests. Uses anonymized AI analysis for career guidance and self-discovery. Compliant with RK Personal Data Law.",
   "requestFramePermissions": []
 }
