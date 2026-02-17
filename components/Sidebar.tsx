@@ -1,27 +1,16 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const PROFILE_KEY = 'lifecompass_profile';
-
-const loadProfile = (): { name: string; email: string } => {
-  try {
-    const saved = localStorage.getItem(PROFILE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return { name: parsed.name || '', email: parsed.email || '' };
-    }
-  } catch {}
-  return { name: '', email: '' };
-};
-
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
-  const profile = loadProfile();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -131,25 +120,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* User Profile Bottom */}
-        <Link
-            to="/profile"
-            onClick={handleLinkClick}
-            className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-[#283843] bg-slate-50 dark:bg-[#1d2830] p-3 hover:bg-slate-100 dark:hover:bg-[#25323b] transition-colors cursor-pointer"
-        >
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center shrink-0">
-            <span className="text-white text-sm font-bold">
-              {profile.name ? profile.name.charAt(0).toUpperCase() : 'П'}
-            </span>
-          </div>
-          <div className="flex flex-col overflow-hidden">
-            <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-              {profile.name || 'Пользователь'}
-            </h3>
-            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-              {profile.email || 'Настроить профиль'}
-            </p>
-          </div>
-        </Link>
+        <div className="flex flex-col gap-2">
+          <Link
+              to="/profile"
+              onClick={handleLinkClick}
+              className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-[#283843] bg-slate-50 dark:bg-[#1d2830] p-3 hover:bg-slate-100 dark:hover:bg-[#25323b] transition-colors cursor-pointer"
+          >
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center shrink-0">
+              <span className="text-white text-sm font-bold">
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'П'}
+              </span>
+            </div>
+            <div className="flex flex-col overflow-hidden flex-1">
+              <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                {user?.name || 'Пользователь'}
+              </h3>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                {user?.email || 'Настроить профиль'}
+              </p>
+            </div>
+          </Link>
+          <button
+            onClick={() => { logout(); navigate('/'); onClose(); }}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-sm"
+          >
+            <span className="material-symbols-outlined text-lg">logout</span>
+            Выйти
+          </button>
+        </div>
       </aside>
     </>
   );

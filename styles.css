@@ -16,6 +16,11 @@
   --font-display: 'Inter', sans-serif;
 }
 
+/* Scroll offset for sticky header */
+[id] {
+  scroll-margin-top: 80px;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
