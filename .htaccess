@@ -1,0 +1,6 @@
+# LifeCompass Uni — serve built app from dist/
+RewriteEngine On
+
+# Serve all requests from dist/ subdirectory
+RewriteCond %{REQUEST_URI} !^/dist/
+RewriteRule ^(.*)$ dist/$1 [L]
