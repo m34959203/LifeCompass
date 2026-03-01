@@ -5,9 +5,8 @@
 # ============================================================
 #
 # Prerequisites:
-#   1. Node.js >= 18, npm installed
-#   2. .env file with GEMINI_API_KEY (optional — app works without it)
-#   3. lftp installed (for FTP upload): sudo apt install lftp / brew install lftp
+#   1. Node.js >= 18, npm installed locally
+#   2. lftp installed (for FTP upload): sudo apt install lftp / brew install lftp
 #
 # Usage:
 #   ./deploy.sh                  # Build only (output in dist/)
@@ -20,20 +19,24 @@
 #   FTP_DIR=/                    (FTP root = domain root in Plesk)
 #
 # Server structure on Plesk (after deploy):
-#   /                            ← Application root
-#   ├── app.js                   ← Node.js entry point
+#   /                            ← Application root (Startup file: app.js)
+#   ├── app.js                   ← Express server + Gemini API
 #   ├── package.json             ← Dependencies
 #   ├── package-lock.json
+#   ├── .htaccess                ← Passenger rewrite rules
 #   ├── node_modules/            ← Created by "Install NPM" in Plesk
-#   └── dist/                    ← Built static files (Document root)
+#   └── dist/                    ← Document root (built static files)
 #       ├── index.html
 #       ├── assets/
-#       ├── fonts/
-#       └── ...
+#       └── fonts/
 #
-# After first deploy, in Plesk:
-#   1. Click "Install NPM" to install dependencies
-#   2. Click "Restart Application"
+# After first deploy, in Plesk → Node.js:
+#   1. Startup file: app.js
+#   2. Document root: /dist
+#   3. Click "Install NPM" to install dependencies
+#   4. Set GEMINI_API_KEY in environment variables
+#   5. Click "Restart Application"
+#   6. Verify: https://lifecompass.zhezu.kz/api/health
 # ============================================================
 
 set -euo pipefail
