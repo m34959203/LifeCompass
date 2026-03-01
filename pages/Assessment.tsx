@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import { startChatSession, sendMessageToAI, isApiConfigured } from '../services/geminiService';
 import { getAssessmentById } from '../services/assessmentData';
 import { AssessmentConfig, Message, Answer } from '../types';
+
+const PsychologistAvatar = lazy(() => import('../components/PsychologistAvatar').then(m => ({ default: m.PsychologistAvatar })));
 
 export const Assessment: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,6 +19,15 @@ export const Assessment: React.FC = () => {
   const [apiError, setApiError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // -- 3D AVATAR STATE --
+  const [showAvatar, setShowAvatar] = useState(true);
+  const avatarState = useMemo(() => {
+    if (isTyping) return 'think' as const;
+    if (messages.length > 0 && messages[messages.length - 1].role === 'model') return 'speak' as const;
+    if (inputValue.trim()) return 'listen' as const;
+    return 'idle' as const;
+  }, [isTyping, messages, inputValue]);
 
   // -- QUIZ STATE --
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -160,6 +171,16 @@ export const Assessment: React.FC = () => {
               </div>
           </div>
           <div className="flex items-center gap-2">
+            {assessment.type === 'chat' && (
+                <button
+                    onClick={() => setShowAvatar(prev => !prev)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${showAvatar ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-[#283843]'}`}
+                    title={showAvatar ? 'Скрыть аватар' : 'Показать аватар'}
+                >
+                    <span className="material-symbols-outlined text-lg">face</span>
+                    <span className="hidden md:inline">3D</span>
+                </button>
+            )}
             {assessment.type === 'chat' && messages.length > 2 && (
                  <button
                     onClick={handleFinishChat}
@@ -193,6 +214,17 @@ export const Assessment: React.FC = () => {
                 <p className="text-amber-600 dark:text-amber-400 text-xs mt-0.5">Укажите <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">GEMINI_API_KEY</code> в переменных среды сервера (Plesk → Node.js)</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {showAvatar && (
+          <div className="flex-none">
+            <Suspense fallback={<div className="w-full h-[220px] md:h-[280px] bg-[#1a1410] flex items-center justify-center"><span className="text-amber-700/50 text-sm">Загрузка 3D…</span></div>}>
+              <PsychologistAvatar
+                state={avatarState}
+                className="w-full h-[220px] md:h-[280px]"
+              />
+            </Suspense>
           </div>
         )}
 
