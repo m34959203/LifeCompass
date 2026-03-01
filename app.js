@@ -3,11 +3,11 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
-import { GoogleGenAI, Type } from '@google/genai';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // --- Load .env file (fallback if Plesk env vars don't work) ---
+let envFileLoaded = false;
 try {
   const envPath = path.join(__dirname, '.env');
   if (fs.existsSync(envPath)) {
@@ -21,10 +21,27 @@ try {
       const val = trimmed.slice(eqIndex + 1).trim().replace(/^["']|["']$/g, '');
       if (!process.env[key]) process.env[key] = val;
     }
+    envFileLoaded = true;
     console.log('.env file loaded');
   }
 } catch (e) {
   console.warn('Could not read .env file:', e.message);
+}
+
+// --- Dynamic import of Gemini SDK (crash-safe) ---
+let GoogleGenAI = null;
+let Type = null;
+let geminiLoadError = null;
+
+try {
+  const genaiModule = await import('@google/genai');
+  GoogleGenAI = genaiModule.GoogleGenAI;
+  Type = genaiModule.Type;
+  console.log('@google/genai loaded successfully');
+} catch (err) {
+  geminiLoadError = err.message;
+  console.error('Failed to load @google/genai:', err.message);
+  console.error('AI features will be disabled.');
 }
 
 const app = express();
@@ -33,11 +50,13 @@ const distPath = path.join(__dirname, 'dist');
 
 // --- Gemini AI Setup ---
 const apiKey = process.env.GEMINI_API_KEY || '';
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+const ai = (GoogleGenAI && apiKey) ? new GoogleGenAI({ apiKey }) : null;
 const MODEL_ID = 'gemini-2.0-flash';
 
 if (ai) {
   console.log('Gemini API configured (key starts with', apiKey.slice(0, 8) + '...)');
+} else if (!GoogleGenAI) {
+  console.warn('Gemini SDK failed to load — AI features disabled');
 } else {
   console.warn('GEMINI_API_KEY not set — AI features disabled');
   console.warn('Set it via: Plesk env vars OR create .env file with GEMINI_API_KEY=your_key');
@@ -60,6 +79,21 @@ setInterval(() => {
 app.use(express.json({ limit: '1mb' }));
 
 // --- API Routes ---
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    node: process.version,
+    platform: process.platform,
+    geminiLoaded: !!GoogleGenAI,
+    geminiError: geminiLoadError,
+    apiKeyPresent: !!apiKey,
+    envFileLoaded,
+    port: PORT,
+    cwd: process.cwd(),
+    uptime: Math.round(process.uptime()),
+  });
+});
 
 app.get('/api/status', (req, res) => {
   res.json({ configured: !!ai });
@@ -253,10 +287,24 @@ app.use(express.static(distPath, {
 }));
 
 // SPA fallback
-app.get('*', (req, res) => {
+app.get('*path', (req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`LifeCompass running on port ${PORT}`);
+try {
+  app.listen(PORT, () => {
+    console.log(`LifeCompass running on port ${PORT}`);
+    console.log(`Node.js ${process.version} | Gemini: ${GoogleGenAI ? 'OK' : 'FAILED'}`);
+  });
+} catch (err) {
+  console.error('FATAL: Failed to start server:', err.message);
+  process.exit(1);
+}
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
 });
