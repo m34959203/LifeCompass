@@ -25,21 +25,11 @@ try {
   console.warn('Could not read .env file:', e.message);
 }
 
-// --- Load Gemini SDK (crash-safe) ---
+// --- Load Gemini SDK (async due to ESM dependency) ---
 let GoogleGenAI = null;
 let Type = null;
 let geminiLoadError = null;
-
-try {
-  const genai = require('@google/genai');
-  GoogleGenAI = genai.GoogleGenAI;
-  Type = genai.Type;
-  console.log('@google/genai loaded successfully');
-} catch (err) {
-  geminiLoadError = err.message;
-  console.error('Failed to load @google/genai:', err.message);
-  console.error('AI features will be disabled.');
-}
+let ai = null;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -47,17 +37,26 @@ const distPath = path.join(__dirname, 'dist');
 
 // --- Gemini AI Setup ---
 const apiKey = process.env.GEMINI_API_KEY || '';
-const ai = (GoogleGenAI && apiKey) ? new GoogleGenAI({ apiKey }) : null;
 const MODEL_ID = 'gemini-2.0-flash';
 
-if (ai) {
-  console.log('Gemini API configured (key starts with', apiKey.slice(0, 8) + '...)');
-} else if (!GoogleGenAI) {
-  console.warn('Gemini SDK failed to load — AI features disabled');
-} else {
-  console.warn('GEMINI_API_KEY not set — AI features disabled');
-  console.warn('Set it via: Plesk env vars OR create .env file with GEMINI_API_KEY=your_key');
-}
+// Dynamic import() to support ESM-only dependencies (p-retry)
+import('@google/genai').then((genai) => {
+  GoogleGenAI = genai.GoogleGenAI;
+  Type = genai.Type;
+  console.log('@google/genai loaded successfully');
+
+  if (apiKey) {
+    ai = new GoogleGenAI({ apiKey });
+    console.log('Gemini API configured (key starts with', apiKey.slice(0, 8) + '...)');
+  } else {
+    console.warn('GEMINI_API_KEY not set — AI features disabled');
+    console.warn('Set it via: Plesk env vars OR create .env file with GEMINI_API_KEY=your_key');
+  }
+}).catch((err) => {
+  geminiLoadError = err.message;
+  console.error('Failed to load @google/genai:', err.message);
+  console.error('AI features will be disabled.');
+});
 
 // Chat sessions storage (in-memory)
 const chatSessions = new Map();
@@ -290,5 +289,5 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log('LifeCompass running on port ' + PORT);
-  console.log('Node.js ' + process.version + ' | Gemini: ' + (GoogleGenAI ? 'OK' : 'FAILED'));
+  console.log('Node.js ' + process.version + ' | Gemini SDK loading async...');
 });
