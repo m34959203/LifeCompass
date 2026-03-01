@@ -390,9 +390,9 @@ export function PsychologistAvatar({ state: externalState, className }: Psycholo
     scene.background = new THREE.Color("#1a1410");
     scene.fog = new THREE.FogExp2(0x1a1410, 0.04);
 
-    const cam = new THREE.PerspectiveCamera(36, W / H, 0.1, 80);
-    cam.position.set(0, 1.05, 5.0);
-    cam.lookAt(0, 0.85, 0);
+    const cam = new THREE.PerspectiveCamera(32, W / H, 0.1, 80);
+    cam.position.set(0, 1.6, 3.6);
+    cam.lookAt(0, 1.3, 0);
 
     const ren = new THREE.WebGLRenderer({ antialias: true });
     ren.setSize(W, H);
@@ -632,9 +632,9 @@ export function PsychologistAvatar({ state: externalState, className }: Psycholo
       lampLight.intensity = 1.5 + Math.sin(t * 3.2) * 0.06 + Math.sin(t * 7.5) * 0.03;
 
       // Camera
-      cam.position.x = Math.sin(t * 0.07) * 0.08;
-      cam.position.y = 1.05 + Math.sin(t * 0.05) * 0.04;
-      cam.lookAt(0, 0.85, 0);
+      cam.position.x = Math.sin(t * 0.07) * 0.06;
+      cam.position.y = 1.6 + Math.sin(t * 0.05) * 0.03;
+      cam.lookAt(0, 1.3, 0);
 
       ren.render(scene, cam);
     };
