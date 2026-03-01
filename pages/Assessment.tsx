@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import { startChatSession, sendMessageToAI, isApiConfigured } from '../services/geminiService';
 import { getAssessmentById } from '../services/assessmentData';
 import { AssessmentConfig, Message, Answer } from '../types';
 
-const PsychologistAvatar = lazy(() => import('../components/PsychologistAvatar').then(m => ({ default: m.PsychologistAvatar })));
+import { PsychologistAvatar } from '../components/PsychologistAvatar';
 
 export const Assessment: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -219,12 +219,10 @@ export const Assessment: React.FC = () => {
 
         {showAvatar && (
           <div className="flex-none">
-            <Suspense fallback={<div className="w-full h-[220px] md:h-[280px] bg-[#0e0e1a] flex items-center justify-center"><span className="text-blue-400/50 text-sm">Загрузка 3D…</span></div>}>
-              <PsychologistAvatar
-                state={avatarState}
-                className="w-full h-[220px] md:h-[280px]"
-              />
-            </Suspense>
+            <PsychologistAvatar
+              state={avatarState}
+              className="w-full h-[160px]"
+            />
           </div>
         )}
 
