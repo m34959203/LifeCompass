@@ -1,10 +1,32 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { GoogleGenAI, Type } from '@google/genai';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// --- Load .env file (fallback if Plesk env vars don't work) ---
+try {
+  const envPath = path.join(__dirname, '.env');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf-8');
+    for (const line of envContent.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIndex = trimmed.indexOf('=');
+      if (eqIndex === -1) continue;
+      const key = trimmed.slice(0, eqIndex).trim();
+      const val = trimmed.slice(eqIndex + 1).trim().replace(/^["']|["']$/g, '');
+      if (!process.env[key]) process.env[key] = val;
+    }
+    console.log('.env file loaded');
+  }
+} catch (e) {
+  console.warn('Could not read .env file:', e.message);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const distPath = path.join(__dirname, 'dist');
@@ -15,9 +37,10 @@ const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 const MODEL_ID = 'gemini-2.0-flash';
 
 if (ai) {
-  console.log('Gemini API configured');
+  console.log('Gemini API configured (key starts with', apiKey.slice(0, 8) + '...)');
 } else {
   console.warn('GEMINI_API_KEY not set — AI features disabled');
+  console.warn('Set it via: Plesk env vars OR create .env file with GEMINI_API_KEY=your_key');
 }
 
 // Chat sessions storage (in-memory)
