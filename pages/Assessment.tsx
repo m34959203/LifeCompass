@@ -219,7 +219,7 @@ export const Assessment: React.FC = () => {
 
         {showAvatar && (
           <div className="flex-none">
-            <Suspense fallback={<div className="w-full h-[220px] md:h-[280px] bg-[#1a1410] flex items-center justify-center"><span className="text-amber-700/50 text-sm">Загрузка 3D…</span></div>}>
+            <Suspense fallback={<div className="w-full h-[220px] md:h-[280px] bg-[#0e0e1a] flex items-center justify-center"><span className="text-blue-400/50 text-sm">Загрузка 3D…</span></div>}>
               <PsychologistAvatar
                 state={avatarState}
                 className="w-full h-[220px] md:h-[280px]"
