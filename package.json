@@ -2,7 +2,6 @@
   "name": "lifecompass-uni",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
     "start": "node app.js",
     "dev": "vite",
@@ -14,7 +13,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.41.0",
-    "express": "^5.2.1",
+    "express": "^4.21.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-markdown": "9",
