@@ -31,8 +31,9 @@ export const Assessment: React.FC = () => {
           setAssessment(data);
 
           if (data.type === 'chat') {
-            if (!isApiConfigured()) {
-              setApiError('Для AI-диалогов необходимо указать GEMINI_API_KEY в файле .env');
+            const configured = await isApiConfigured();
+            if (!configured) {
+              setApiError('AI-сервис недоступен. GEMINI_API_KEY не настроен на сервере.');
               if (data.initialMessage) {
                 setMessages([{
                   id: 'init-1',
@@ -45,7 +46,7 @@ export const Assessment: React.FC = () => {
             }
 
             try {
-              await startChatSession('gemini-3-flash-preview', data.systemInstruction || '');
+              await startChatSession('gemini-2.0-flash', data.systemInstruction || '');
               if (data.initialMessage) {
                 setMessages([{
                   id: 'init-1',
@@ -57,9 +58,9 @@ export const Assessment: React.FC = () => {
             } catch (e: any) {
               console.error(e);
               if (e?.message === 'API_KEY_MISSING') {
-                setApiError('Для AI-диалогов необходимо указать GEMINI_API_KEY в файле .env');
+                setApiError('AI-сервис недоступен. GEMINI_API_KEY не настроен на сервере.');
               } else {
-                setApiError('Не удалось подключиться к AI. Проверьте интернет-соединение и API-ключ.');
+                setApiError('Не удалось подключиться к AI. Проверьте интернет-соединение.');
               }
               if (data.initialMessage) {
                 setMessages([{
@@ -189,7 +190,7 @@ export const Assessment: React.FC = () => {
               <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-xl shrink-0">warning</span>
               <div className="flex-1">
                 <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">{apiError}</p>
-                <p className="text-amber-600 dark:text-amber-400 text-xs mt-0.5">Создайте файл <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">.env</code> с переменной <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">GEMINI_API_KEY=ваш_ключ</code></p>
+                <p className="text-amber-600 dark:text-amber-400 text-xs mt-0.5">Укажите <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">GEMINI_API_KEY</code> в переменных среды сервера (Plesk → Node.js)</p>
               </div>
             </div>
           </div>
