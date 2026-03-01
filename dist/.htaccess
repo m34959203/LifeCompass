@@ -41,10 +41,14 @@
   </FilesMatch>
 </IfModule>
 
-# --- SPA Fallback (HashRouter doesn't need this, but safe for future BrowserRouter migration) ---
+# --- SPA Fallback ---
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # Don't rewrite API routes — let Node.js handle them
+  RewriteCond %{REQUEST_URI} ^/api/ [NC]
+  RewriteRule ^ - [L]
 
   # Don't rewrite existing files/dirs
   RewriteCond %{REQUEST_FILENAME} !-f
