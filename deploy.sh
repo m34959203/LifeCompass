@@ -117,6 +117,7 @@ if [[ "${1:-}" == "--upload" ]]; then
     put app.js;
     put package.json;
     put package-lock.json;
+    put .htaccess;
     mirror --reverse --delete --verbose dist/ dist/;
     quit
   "
