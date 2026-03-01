@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# LifeCompass Uni — Deploy to hoster.kz
+# LifeCompass Uni — Deploy to hoster.kz (Plesk Node.js)
 # Domain: lifecompass.zhezu.kz
 # ============================================================
 #
@@ -17,7 +17,23 @@
 #   FTP_HOST=ftp.zhezu.kz        (or hoster.kz FTP address)
 #   FTP_USER=your_ftp_login
 #   FTP_PASS=your_ftp_password
-#   FTP_DIR=/httpdocs             (Plesk default, or /lifecompass.zhezu.kz)
+#   FTP_DIR=/                    (FTP root = domain root in Plesk)
+#
+# Server structure on Plesk (after deploy):
+#   /                            ← Application root
+#   ├── app.js                   ← Node.js entry point
+#   ├── package.json             ← Dependencies
+#   ├── package-lock.json
+#   ├── node_modules/            ← Created by "Install NPM" in Plesk
+#   └── dist/                    ← Built static files (Document root)
+#       ├── index.html
+#       ├── assets/
+#       ├── fonts/
+#       └── ...
+#
+# After first deploy, in Plesk:
+#   1. Click "Install NPM" to install dependencies
+#   2. Click "Restart Application"
 # ============================================================
 
 set -euo pipefail
@@ -73,7 +89,7 @@ if [[ "${1:-}" == "--upload" ]]; then
   FTP_HOST="${FTP_HOST:-}"
   FTP_USER="${FTP_USER:-}"
   FTP_PASS="${FTP_PASS:-}"
-  FTP_DIR="${FTP_DIR:-/httpdocs}"
+  FTP_DIR="${FTP_DIR:-/}"
 
   if [ -z "$FTP_HOST" ] || [ -z "$FTP_USER" ] || [ -z "$FTP_PASS" ]; then
     echo -e "  ${RED}✗${NC} FTP credentials missing!"
@@ -82,7 +98,7 @@ if [[ "${1:-}" == "--upload" ]]; then
     echo "    FTP_HOST=ftp.zhezu.kz"
     echo "    FTP_USER=your_login"
     echo "    FTP_PASS=your_password"
-    echo "    FTP_DIR=/httpdocs"
+    echo "    FTP_DIR=/"
     echo ""
     echo "  Or set environment variables before running."
     exit 1
@@ -93,24 +109,33 @@ if [[ "${1:-}" == "--upload" ]]; then
     exit 1
   fi
 
-  echo "  Uploading dist/ → ${FTP_HOST}:${FTP_DIR}..."
+  echo "  Uploading server files + dist/ → ${FTP_HOST}:${FTP_DIR}..."
   lftp -c "
     set ssl:verify-certificate no;
     open -u ${FTP_USER},${FTP_PASS} ${FTP_HOST};
-    mirror --reverse --delete --verbose dist/ ${FTP_DIR}/;
+    cd ${FTP_DIR};
+    put app.js;
+    put package.json;
+    put package-lock.json;
+    mirror --reverse --delete --verbose dist/ dist/;
     quit
   "
 
   echo -e "\n  ${GREEN}✓${NC} Upload complete!"
+  echo -e "  ${CYAN}Don't forget in Plesk:${NC}"
+  echo -e "    1. Click ${YELLOW}\"Установка NPM\"${NC} (Install NPM)"
+  echo -e "    2. Click ${YELLOW}\"Перезапустить приложение\"${NC} (Restart Application)"
   echo -e "  ${GREEN}✓${NC} Site live at: ${CYAN}https://lifecompass.zhezu.kz${NC}"
 else
   echo -e "\n${YELLOW}[4/4]${NC} Skipping upload (use --upload to deploy via FTP)"
   echo ""
-  echo -e "  ${CYAN}Ready to deploy!${NC} Upload dist/ contents to hoster.kz:"
+  echo -e "  ${CYAN}Ready to deploy!${NC} Options:"
   echo ""
   echo "  Option A: Run ./deploy.sh --upload (requires lftp + .env.deploy)"
-  echo "  Option B: Plesk File Manager → upload dist/* to httpdocs/"
-  echo "  Option C: FTP client (FileZilla) → upload dist/* to /"
+  echo "  Option B: Upload manually via Plesk File Manager:"
+  echo "            1. Upload app.js, package.json, package-lock.json to domain root"
+  echo "            2. Upload dist/ folder to domain root"
+  echo "            3. In Plesk Node.js: Install NPM → Restart Application"
 fi
 
 echo -e "\n${GREEN}═══════════════════════════════════════════${NC}"

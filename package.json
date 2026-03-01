@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "start": "node app.js",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
@@ -13,6 +14,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.41.0",
+    "express": "^5.2.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-markdown": "9",
