@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { startChatSession, sendMessageToAI, isApiConfigured } from '../services/geminiService';
+import { startChatSession, sendMessageToAI, sendVoiceMessageToAI, isApiConfigured } from '../services/geminiService';
 import { getAssessmentById } from '../services/assessmentData';
 import { AssessmentConfig, Message, Answer } from '../types';
 
@@ -49,7 +49,6 @@ export const Assessment: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const synthRef = useRef(typeof window !== 'undefined' ? window.speechSynthesis : null);
 
   const hasSpeechRecognition = typeof window !== 'undefined' &&
     !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -123,6 +122,42 @@ export const Assessment: React.FC = () => {
     init();
   }, [id]);
 
+  // -- AUDIO PLAYBACK --
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const playAudio = useCallback((base64Audio: string, mimeType: string) => {
+    // Stop any current playback
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    setIsSpeaking(true);
+    const audio = new Audio(`data:${mimeType};base64,${base64Audio}`);
+    audioRef.current = audio;
+    audio.onended = () => {
+      setIsSpeaking(false);
+      audioRef.current = null;
+    };
+    audio.onerror = () => {
+      console.error('Audio playback error');
+      setIsSpeaking(false);
+      audioRef.current = null;
+    };
+    audio.play().catch(err => {
+      console.error('Audio play failed:', err);
+      setIsSpeaking(false);
+    });
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsSpeaking(false);
+  }, []);
+
   // -- CHAT HANDLERS --
   const handleSendMessage = useCallback(async (overrideText?: string) => {
     const text = (overrideText || inputValue).trim();
@@ -133,52 +168,31 @@ export const Assessment: React.FC = () => {
     setIsTyping(true);
 
     try {
-      const responseText = await sendMessageToAI(text);
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: responseText, timestamp: new Date() }]);
+      if (voiceEnabled) {
+        // Use voice endpoint: get text + audio together
+        const response = await sendVoiceMessageToAI(text);
+        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: response.text, timestamp: new Date() }]);
+        setIsTyping(false);
+        // Play audio
+        if (response.audio && response.audioMimeType) {
+          playAudio(response.audio, response.audioMimeType);
+        }
+      } else {
+        // Text-only mode
+        const responseText = await sendMessageToAI(text);
+        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: responseText, timestamp: new Date() }]);
+        setIsTyping(false);
+      }
     } catch (error) {
       console.error(error);
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: 'Произошла ошибка. Попробуйте ещё раз.', timestamp: new Date() }]);
-    } finally {
       setIsTyping(false);
     }
-  }, [inputValue, apiError]);
+  }, [inputValue, apiError, voiceEnabled, playAudio]);
 
   const handleFinishChat = () => {
       navigate(`/results/${id}`, { state: { messages: messages, assessmentId: id, type: 'chat' } });
   };
-
-  // -- TTS: speak AI response --
-  const speakText = useCallback((text: string) => {
-    if (!synthRef.current || !voiceEnabled) return;
-    synthRef.current.cancel();
-    // Strip markdown for cleaner speech
-    const clean = text
-      .replace(/[#*_~`>|[\]()!]/g, '')
-      .replace(/\n{2,}/g, '. ')
-      .replace(/\n/g, ' ')
-      .trim();
-    if (!clean) return;
-
-    // Split into chunks (SpeechSynthesis has limits on long text)
-    const chunks = clean.match(/[^.!?]{1,200}[.!?]?/g) || [clean];
-    setIsSpeaking(true);
-
-    chunks.forEach((chunk, i) => {
-      const utt = new SpeechSynthesisUtterance(chunk.trim());
-      utt.lang = 'ru-RU';
-      utt.rate = 1.0;
-      utt.pitch = 1.0;
-      if (i === chunks.length - 1) {
-        utt.onend = () => setIsSpeaking(false);
-      }
-      synthRef.current!.speak(utt);
-    });
-  }, [voiceEnabled]);
-
-  const stopSpeaking = useCallback(() => {
-    synthRef.current?.cancel();
-    setIsSpeaking(false);
-  }, []);
 
   // -- STT: microphone recording --
   const pendingTranscript = useRef('');
@@ -244,20 +258,14 @@ export const Assessment: React.FC = () => {
     }
   }, [isRecording, startRecording, stopRecording]);
 
-  // Auto-speak AI responses
-  useEffect(() => {
-    if (!voiceEnabled || messages.length === 0) return;
-    const last = messages[messages.length - 1];
-    if (last.role === 'model' && last.id !== 'init-1') {
-      speakText(last.text);
-    }
-  }, [messages, voiceEnabled, speakText]);
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       recognitionRef.current?.abort();
-      synthRef.current?.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
   }, []);
 

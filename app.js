@@ -138,6 +138,130 @@ app.post('/api/chat/message', async (req, res) => {
   }
 });
 
+// Voice message: get AI text response + TTS audio in one call
+app.post('/api/chat/voice', async (req, res) => {
+  if (!ai) return res.status(503).json({ error: 'API_KEY_MISSING' });
+
+  try {
+    const { sessionId, text } = req.body;
+    const session = chatSessions.get(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found or expired' });
+    }
+
+    // 1. Get text response from chat
+    const result = await session.chat.sendMessage({ message: text });
+    const responseText = result.text || '';
+
+    // 2. Generate TTS audio via Gemini
+    let audioBase64 = null;
+    try {
+      const cleanText = responseText
+        .replace(/[#*_~`>|[\]()!]/g, '')
+        .replace(/\n{2,}/g, '. ')
+        .replace(/\n/g, ' ')
+        .trim();
+
+      if (cleanText) {
+        const ttsResponse = await ai.models.generateContent({
+          model: 'gemini-2.0-flash',
+          contents: [{
+            role: 'user',
+            parts: [{ text: `Прочитай вслух следующий текст естественным, тёплым, дружелюбным голосом. Не добавляй ничего от себя, просто озвучь:\n\n${cleanText}` }],
+          }],
+          config: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: 'Kore',
+                },
+              },
+            },
+          },
+        });
+
+        // Extract audio from response
+        if (ttsResponse.candidates && ttsResponse.candidates[0]) {
+          const parts = ttsResponse.candidates[0].content.parts;
+          for (const part of parts) {
+            if (part.inlineData && part.inlineData.data) {
+              audioBase64 = part.inlineData.data;
+              break;
+            }
+          }
+        }
+      }
+    } catch (ttsError) {
+      console.error('TTS generation failed (falling back to text-only):', ttsError.message);
+    }
+
+    res.json({
+      text: responseText,
+      audio: audioBase64,
+      audioMimeType: audioBase64 ? 'audio/wav' : null,
+    });
+  } catch (error) {
+    console.error('Error in voice message:', error);
+    res.status(500).json({ error: 'Failed to process voice message' });
+  }
+});
+
+// Standalone TTS endpoint
+app.post('/api/tts', async (req, res) => {
+  if (!ai) return res.status(503).json({ error: 'API_KEY_MISSING' });
+
+  try {
+    const { text } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ error: 'No text provided' });
+
+    const cleanText = text
+      .replace(/[#*_~`>|[\]()!]/g, '')
+      .replace(/\n{2,}/g, '. ')
+      .replace(/\n/g, ' ')
+      .trim();
+
+    const ttsResponse = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [{
+        role: 'user',
+        parts: [{ text: `Прочитай вслух следующий текст естественным голосом. Не добавляй ничего от себя:\n\n${cleanText}` }],
+      }],
+      config: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: 'Kore',
+            },
+          },
+        },
+      },
+    });
+
+    let audioBase64 = null;
+    if (ttsResponse.candidates && ttsResponse.candidates[0]) {
+      const parts = ttsResponse.candidates[0].content.parts;
+      for (const part of parts) {
+        if (part.inlineData && part.inlineData.data) {
+          audioBase64 = part.inlineData.data;
+          break;
+        }
+      }
+    }
+
+    if (!audioBase64) {
+      return res.status(500).json({ error: 'No audio generated' });
+    }
+
+    res.json({ audio: audioBase64, mimeType: 'audio/wav' });
+  } catch (error) {
+    console.error('TTS failed:', error);
+    res.status(500).json({ error: 'TTS generation failed' });
+  }
+});
+
 app.post('/api/analyze/quiz', async (req, res) => {
   if (!ai) {
     return res.json({

@@ -59,6 +59,38 @@ export const sendMessageToAI = async (text: string): Promise<string> => {
 };
 
 /**
+ * Voice message: sends text to AI and gets text + audio response
+ */
+export const sendVoiceMessageToAI = async (text: string): Promise<{
+  text: string;
+  audio: string | null;
+  audioMimeType: string | null;
+}> => {
+  if (!currentSessionId) {
+    throw new Error('Chat session not initialized');
+  }
+
+  try {
+    const res = await fetch('/api/chat/voice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: currentSessionId, text }),
+    });
+
+    if (!res.ok) throw new Error('Failed to send voice message');
+
+    return await res.json();
+  } catch (error) {
+    console.error('Error sending voice message:', error);
+    return {
+      text: 'Извините, произошла ошибка связи с сервером. Попробуйте еще раз.',
+      audio: null,
+      audioMimeType: null,
+    };
+  }
+};
+
+/**
  * Generates a structured analysis report based on quiz scores
  */
 export const generateQuizAnalysis = async (
