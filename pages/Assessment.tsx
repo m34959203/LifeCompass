@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import Markdown from 'react-markdown';
 import { startChatSession, sendMessageToAI, isApiConfigured } from '../services/geminiService';
 import { getAssessmentById } from '../services/assessmentData';
 import { AssessmentConfig, Message, Answer } from '../types';
@@ -44,8 +43,6 @@ export const Assessment: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // -- VOICE STATE --
   const [isRecording, setIsRecording] = useState(false);
@@ -58,7 +55,6 @@ export const Assessment: React.FC = () => {
     !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
   // -- AVATAR STATE --
-  const [showAvatar, setShowAvatar] = useState(true);
   const avatarState = useMemo(() => {
     if (isRecording) return 'listen' as const;
     if (isSpeaking) return 'speak' as const;
@@ -128,19 +124,16 @@ export const Assessment: React.FC = () => {
   }, [id]);
 
   // -- CHAT HANDLERS --
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  useEffect(() => { if (assessment?.type === 'chat') scrollToBottom(); }, [messages, isTyping, assessment]);
-
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || apiError) return;
-    const userText = inputValue.trim();
+  const handleSendMessage = useCallback(async (overrideText?: string) => {
+    const text = (overrideText || inputValue).trim();
+    if (!text || apiError) return;
     setInputValue('');
 
-    setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text: userText, timestamp: new Date() }]);
+    setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text, timestamp: new Date() }]);
     setIsTyping(true);
 
     try {
-      const responseText = await sendMessageToAI(userText);
+      const responseText = await sendMessageToAI(text);
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: responseText, timestamp: new Date() }]);
     } catch (error) {
       console.error(error);
@@ -148,17 +141,10 @@ export const Assessment: React.FC = () => {
     } finally {
       setIsTyping(false);
     }
-  };
+  }, [inputValue, apiError]);
 
   const handleFinishChat = () => {
       navigate(`/results/${id}`, { state: { messages: messages, assessmentId: id, type: 'chat' } });
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
   };
 
   // -- TTS: speak AI response --
@@ -195,6 +181,8 @@ export const Assessment: React.FC = () => {
   }, []);
 
   // -- STT: microphone recording --
+  const pendingTranscript = useRef('');
+
   const startRecording = useCallback(() => {
     if (!hasSpeechRecognition) return;
     stopSpeaking();
@@ -206,14 +194,22 @@ export const Assessment: React.FC = () => {
     recognition.interimResults = true;
     recognition.lang = 'ru-RU';
 
-    recognition.onstart = () => setIsRecording(true);
+    recognition.onstart = () => {
+      setIsRecording(true);
+      pendingTranscript.current = '';
+    };
 
     recognition.onresult = (e: SpeechRecognitionEvent) => {
       let transcript = '';
+      let isFinal = false;
       for (let i = e.resultIndex; i < e.results.length; i++) {
         transcript += e.results[i][0].transcript;
+        if (e.results[i].isFinal) isFinal = true;
       }
       setInputValue(transcript);
+      if (isFinal) {
+        pendingTranscript.current = transcript;
+      }
     };
 
     recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
@@ -224,11 +220,17 @@ export const Assessment: React.FC = () => {
     recognition.onend = () => {
       setIsRecording(false);
       recognitionRef.current = null;
+      // Auto-send when speech ends
+      const finalText = pendingTranscript.current.trim();
+      if (finalText) {
+        setInputValue('');
+        handleSendMessage(finalText);
+      }
     };
 
     recognitionRef.current = recognition;
     recognition.start();
-  }, [hasSpeechRecognition, stopSpeaking]);
+  }, [hasSpeechRecognition, stopSpeaking, handleSendMessage]);
 
   const stopRecording = useCallback(() => {
     recognitionRef.current?.stop();
@@ -307,16 +309,6 @@ export const Assessment: React.FC = () => {
               </div>
           </div>
           <div className="flex items-center gap-2">
-            {assessment.type === 'chat' && (
-                <button
-                    onClick={() => setShowAvatar(prev => !prev)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${showAvatar ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-[#283843]'}`}
-                    title={showAvatar ? 'Скрыть аватар' : 'Показать аватар'}
-                >
-                    <span className="material-symbols-outlined text-lg">face</span>
-                    <span className="hidden md:inline">3D</span>
-                </button>
-            )}
             {assessment.type === 'chat' && messages.length > 2 && (
                  <button
                     onClick={handleFinishChat}
@@ -335,125 +327,176 @@ export const Assessment: React.FC = () => {
     </header>
   );
 
-  // --- RENDER CHAT INTERFACE ---
+  // --- RENDER CHAT (VOICE ASSISTANT) INTERFACE ---
   if (assessment.type === 'chat') {
+    // Determine status text
+    const statusText = isRecording ? 'Слушаю вас…'
+      : isTyping ? 'Думаю…'
+      : isSpeaking ? 'Говорю…'
+      : apiError ? 'Не подключено'
+      : 'Нажмите на микрофон';
+
+    // Last AI message for subtitle
+    const lastAiMsg = [...messages].reverse().find(m => m.role === 'model');
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+
     return (
-      <div className="flex flex-col h-full bg-[#f0f2f5] dark:bg-[#0b141a] overflow-hidden relative">
-        <Header />
+      <div className="flex flex-col h-full bg-gradient-to-b from-[#0a0a1a] via-[#0e1225] to-[#0a0a1a] overflow-hidden relative">
+        {/* Top bar */}
+        <header className="flex-none z-20 px-4 py-3 flex items-center justify-between">
+          <Link to="/dashboard" className="text-slate-400 hover:text-white transition-colors flex items-center gap-2">
+            <span className="material-symbols-outlined">arrow_back</span>
+            <span className="text-sm hidden md:inline">Назад</span>
+          </Link>
+          <div className="text-center">
+            <h1 className="text-sm font-semibold text-white/80">{assessment.title}</h1>
+            <div className="flex items-center justify-center gap-1.5 mt-0.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${apiError ? 'bg-red-500' : isRecording ? 'bg-red-500 animate-pulse' : isSpeaking ? 'bg-purple-500 animate-pulse' : isTyping ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`}></span>
+              <span className="text-[10px] text-slate-400">{statusText}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {messages.length > 2 && (
+              <button onClick={handleFinishChat} className="text-green-400 hover:text-green-300 transition-colors flex items-center gap-1">
+                <span className="material-symbols-outlined text-lg">check_circle</span>
+                <span className="text-xs hidden md:inline">Завершить</span>
+              </button>
+            )}
+          </div>
+        </header>
 
         {apiError && (
-          <div className="flex-none bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-4 py-3">
-            <div className="max-w-3xl mx-auto flex items-center gap-3">
-              <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-xl shrink-0">warning</span>
-              <div className="flex-1">
-                <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">{apiError}</p>
-                <p className="text-amber-600 dark:text-amber-400 text-xs mt-0.5">Укажите <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">GEMINI_API_KEY</code> в переменных среды сервера (Plesk → Node.js)</p>
-              </div>
-            </div>
+          <div className="mx-4 mb-2 bg-red-900/20 border border-red-800/40 rounded-xl px-4 py-2 text-center">
+            <p className="text-red-300 text-xs">{apiError}</p>
           </div>
         )}
 
-        {showAvatar && (
-          <div className="flex-none">
+        {/* Center: Animated sphere + subtitles */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6 relative">
+          {/* Animated sphere */}
+          <div className="relative mb-8">
             <PsychologistAvatar
               state={avatarState}
-              className="w-full h-[160px]"
+              className="w-[200px] h-[200px] md:w-[260px] md:h-[260px] rounded-full"
             />
           </div>
-        )}
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
-          <div className="max-w-3xl mx-auto flex flex-col gap-4">
-             <div className="flex justify-center my-4">
-                <span className="bg-slate-200 dark:bg-[#1f2c34] text-slate-600 dark:text-slate-400 text-xs px-3 py-1 rounded-full shadow-sm text-center">
-                    {assessment.description} <br/>
-                    <span className="opacity-70">Отвечайте развернуто для точного анализа.</span>
-                </span>
-            </div>
-            {messages.map((msg) => (
-                <div key={msg.id} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`flex max-w-[85%] md:max-w-[80%] gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                        <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${msg.role === 'user' ? 'bg-indigo-100 text-indigo-600 hidden md:flex' : 'bg-white dark:bg-[#1f2c34] border border-slate-100 dark:border-slate-700 text-primary'}`}>
-                            <span className="material-symbols-outlined text-sm">{msg.role === 'user' ? 'person' : 'smart_toy'}</span>
-                        </div>
-                        <div className={`px-4 py-3 rounded-2xl text-[15px] leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-white dark:bg-[#1f2c34] text-slate-800 dark:text-slate-100 border border-slate-100 dark:border-[#283843] rounded-bl-none'}`}>
-                            {msg.role === 'user' ? (
-                              <div className="whitespace-pre-wrap">{msg.text}</div>
-                            ) : (
-                              <Markdown
-                                className="prose dark:prose-invert max-w-none prose-p:my-1.5 prose-headings:my-2 prose-headings:text-slate-900 dark:prose-headings:text-white prose-ul:my-1 prose-ul:pl-4 prose-li:my-0.5 prose-blockquote:my-2 prose-blockquote:border-primary/50 prose-blockquote:bg-slate-50 dark:prose-blockquote:bg-slate-800/50 prose-blockquote:not-italic prose-blockquote:px-3 prose-blockquote:py-1 prose-blockquote:rounded-r prose-strong:text-slate-900 dark:prose-strong:text-white [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
-                              >
-                                {msg.text}
-                              </Markdown>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            ))}
+          {/* Transcript / subtitle area */}
+          <div className="w-full max-w-md text-center space-y-3 min-h-[80px]">
+            {/* Show what user said */}
+            {isRecording && inputValue && (
+              <p className="text-white/90 text-base animate-pulse">
+                "{inputValue}"
+              </p>
+            )}
+
+            {/* Show user's last message after sending */}
+            {!isRecording && lastUserMsg && !isTyping && !isSpeaking && (
+              <p className="text-slate-500 text-sm">
+                Вы: {lastUserMsg.text.length > 80 ? lastUserMsg.text.slice(0, 80) + '…' : lastUserMsg.text}
+              </p>
+            )}
+
+            {/* Thinking dots */}
             {isTyping && (
-                <div className="flex w-full justify-start">
-                     <div className="flex gap-2 ml-10">
-                        <div className="bg-white dark:bg-[#1f2c34] border border-slate-100 dark:border-[#283843] px-4 py-3 rounded-2xl rounded-bl-none flex items-center gap-1.5 h-[46px]">
-                            <div className="w-2 h-2 rounded-full bg-slate-400/60 typing-dot"></div>
-                            <div className="w-2 h-2 rounded-full bg-slate-400/60 typing-dot"></div>
-                            <div className="w-2 h-2 rounded-full bg-slate-400/60 typing-dot"></div>
-                        </div>
-                    </div>
-                </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </main>
-        <footer className="flex-none p-4 bg-white dark:bg-[#131b20] border-t border-slate-200 dark:border-[#283843]">
-           <div className="max-w-3xl mx-auto flex flex-col gap-3">
-            {messages.length > 2 && (
-                <button onClick={handleFinishChat} className="md:hidden w-full py-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-sm font-bold border border-green-200 dark:border-green-800">
-                    Завершить диагностику и получить результат
-                </button>
-            )}
-            <div className="relative flex items-end gap-2">
-                {/* Voice toggle */}
-                <button
-                  onClick={() => { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); }}
-                  className={`h-[50px] w-[50px] flex items-center justify-center rounded-full transition-all shrink-0 ${voiceEnabled ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-500' : 'bg-slate-100 dark:bg-[#1f2c34] text-slate-400'}`}
-                  title={voiceEnabled ? 'Озвучка включена' : 'Озвучка выключена'}
-                >
-                  <span className="material-symbols-outlined text-xl">{voiceEnabled ? 'volume_up' : 'volume_off'}</span>
-                </button>
-
-                <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder={apiError ? "AI недоступен — настройте API ключ" : isRecording ? "Говорите…" : "Ваш ответ..."} className={`w-full bg-slate-100 dark:bg-[#1f2c34] text-slate-900 dark:text-white rounded-2xl px-4 py-3.5 outline-none focus:ring-2 transition-all border border-transparent ${isRecording ? 'ring-2 ring-red-400/50' : 'focus:ring-primary/50'} ${apiError ? 'opacity-60' : ''}`} disabled={isTyping || !!apiError || isRecording} />
-
-                {/* Mic button */}
-                {hasSpeechRecognition && (
-                  <button
-                    onClick={toggleRecording}
-                    disabled={isTyping || !!apiError}
-                    className={`h-[50px] w-[50px] flex items-center justify-center rounded-full transition-all shrink-0 ${
-                      isRecording
-                        ? 'bg-red-500 text-white shadow-lg animate-pulse'
-                        : isTyping || apiError
-                          ? 'bg-slate-200 dark:bg-[#283843] text-slate-400 cursor-not-allowed'
-                          : 'bg-slate-100 dark:bg-[#1f2c34] text-slate-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20'
-                    }`}
-                    title={isRecording ? 'Остановить запись' : 'Голосовой ввод'}
-                  >
-                    <span className="material-symbols-outlined text-xl">{isRecording ? 'stop' : 'mic'}</span>
-                  </button>
-                )}
-
-                {/* Send button */}
-                <button onClick={handleSendMessage} disabled={!inputValue.trim() || isTyping || !!apiError} className={`h-[50px] w-[50px] flex items-center justify-center rounded-full transition-all shrink-0 ${inputValue.trim() && !isTyping && !apiError ? 'bg-primary text-white hover:bg-primary-hover shadow-lg' : 'bg-slate-200 dark:bg-[#283843] text-slate-400 cursor-not-allowed'}`}><span className="material-symbols-outlined">send</span></button>
-            </div>
-
-            {/* Speaking indicator */}
-            {isSpeaking && (
-              <div className="flex items-center justify-center gap-2">
-                <button onClick={stopSpeaking} className="flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-600 transition-colors">
-                  <span className="material-symbols-outlined text-sm animate-pulse">graphic_eq</span>
-                  <span>Озвучивается… Нажмите чтобы остановить</span>
-                </button>
+              <div className="flex items-center justify-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-yellow-400/60 typing-dot"></div>
+                <div className="w-2 h-2 rounded-full bg-yellow-400/60 typing-dot" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-2 h-2 rounded-full bg-yellow-400/60 typing-dot" style={{ animationDelay: '0.4s' }}></div>
               </div>
             )}
+
+            {/* AI response subtitle */}
+            {!isTyping && lastAiMsg && (
+              <p className={`text-slate-300 text-sm leading-relaxed transition-opacity duration-500 ${isSpeaking ? 'opacity-100' : 'opacity-70'}`}>
+                {lastAiMsg.text.length > 200 ? lastAiMsg.text.slice(0, 200) + '…' : lastAiMsg.text}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom: Controls */}
+        <footer className="flex-none pb-8 pt-4 px-6">
+          <div className="flex flex-col items-center gap-4">
+            {/* Mic button */}
+            <div className="relative">
+              {/* Pulse rings when recording */}
+              {isRecording && (
+                <>
+                  <div className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" style={{ animationDuration: '1.5s' }}></div>
+                  <div className="absolute -inset-3 rounded-full border-2 border-red-500/30 animate-ping" style={{ animationDuration: '2s' }}></div>
+                </>
+              )}
+              {isSpeaking && (
+                <div className="absolute -inset-2 rounded-full border-2 border-purple-500/20 animate-ping" style={{ animationDuration: '2s' }}></div>
+              )}
+
+              <button
+                onClick={() => {
+                  if (isSpeaking) {
+                    stopSpeaking();
+                  } else if (isTyping) {
+                    // Can't interact while thinking
+                  } else {
+                    toggleRecording();
+                  }
+                }}
+                disabled={!!apiError || isTyping}
+                className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl ${
+                  isRecording
+                    ? 'bg-red-500 text-white scale-110 shadow-red-500/40'
+                    : isSpeaking
+                      ? 'bg-purple-600 text-white shadow-purple-500/30'
+                      : isTyping
+                        ? 'bg-slate-700 text-slate-400 cursor-wait'
+                        : apiError
+                          ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                          : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:scale-105 hover:shadow-blue-500/40 active:scale-95'
+                }`}
+              >
+                <span className="material-symbols-outlined text-3xl">
+                  {isRecording ? 'stop' : isSpeaking ? 'volume_up' : 'mic'}
+                </span>
+              </button>
+            </div>
+
+            {/* Secondary controls */}
+            <div className="flex items-center gap-6">
+              {/* Text input toggle */}
+              <button
+                onClick={() => {
+                  const text = prompt('Введите текст:');
+                  if (text?.trim()) {
+                    handleSendMessage(text.trim());
+                  }
+                }}
+                disabled={isTyping || !!apiError}
+                className="text-slate-500 hover:text-white transition-colors flex flex-col items-center gap-1 disabled:opacity-30"
+              >
+                <span className="material-symbols-outlined text-xl">keyboard</span>
+                <span className="text-[10px]">Текст</span>
+              </button>
+
+              {/* Volume toggle */}
+              <button
+                onClick={() => { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); }}
+                className={`flex flex-col items-center gap-1 transition-colors ${voiceEnabled ? 'text-blue-400 hover:text-blue-300' : 'text-slate-600 hover:text-slate-400'}`}
+              >
+                <span className="material-symbols-outlined text-xl">{voiceEnabled ? 'volume_up' : 'volume_off'}</span>
+                <span className="text-[10px]">{voiceEnabled ? 'Звук вкл' : 'Звук выкл'}</span>
+              </button>
+
+              {/* Finish */}
+              {messages.length > 2 && (
+                <button
+                  onClick={handleFinishChat}
+                  className="text-green-400 hover:text-green-300 transition-colors flex flex-col items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-xl">check_circle</span>
+                  <span className="text-[10px]">Готово</span>
+                </button>
+              )}
+            </div>
           </div>
         </footer>
       </div>
