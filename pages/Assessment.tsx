@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import { startChatSession, sendMessageToAI, isApiConfigured } from '../services/geminiService';
@@ -6,6 +6,33 @@ import { getAssessmentById } from '../services/assessmentData';
 import { AssessmentConfig, Message, Answer } from '../types';
 
 import { PsychologistAvatar } from '../components/PsychologistAvatar';
+
+// Web Speech API types
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((e: SpeechRecognitionEvent) => void) | null;
+  onerror: ((e: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  onstart: (() => void) | null;
+}
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => SpeechRecognition;
+    webkitSpeechRecognition?: new () => SpeechRecognition;
+  }
+}
 
 export const Assessment: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,14 +47,25 @@ export const Assessment: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // -- 3D AVATAR STATE --
+  // -- VOICE STATE --
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const synthRef = useRef(typeof window !== 'undefined' ? window.speechSynthesis : null);
+
+  const hasSpeechRecognition = typeof window !== 'undefined' &&
+    !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  // -- AVATAR STATE --
   const [showAvatar, setShowAvatar] = useState(true);
   const avatarState = useMemo(() => {
+    if (isRecording) return 'listen' as const;
+    if (isSpeaking) return 'speak' as const;
     if (isTyping) return 'think' as const;
-    if (messages.length > 0 && messages[messages.length - 1].role === 'model') return 'speak' as const;
     if (inputValue.trim()) return 'listen' as const;
     return 'idle' as const;
-  }, [isTyping, messages, inputValue]);
+  }, [isRecording, isSpeaking, isTyping, inputValue]);
 
   // -- QUIZ STATE --
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -122,6 +160,104 @@ export const Assessment: React.FC = () => {
       handleSendMessage();
     }
   };
+
+  // -- TTS: speak AI response --
+  const speakText = useCallback((text: string) => {
+    if (!synthRef.current || !voiceEnabled) return;
+    synthRef.current.cancel();
+    // Strip markdown for cleaner speech
+    const clean = text
+      .replace(/[#*_~`>|[\]()!]/g, '')
+      .replace(/\n{2,}/g, '. ')
+      .replace(/\n/g, ' ')
+      .trim();
+    if (!clean) return;
+
+    // Split into chunks (SpeechSynthesis has limits on long text)
+    const chunks = clean.match(/[^.!?]{1,200}[.!?]?/g) || [clean];
+    setIsSpeaking(true);
+
+    chunks.forEach((chunk, i) => {
+      const utt = new SpeechSynthesisUtterance(chunk.trim());
+      utt.lang = 'ru-RU';
+      utt.rate = 1.0;
+      utt.pitch = 1.0;
+      if (i === chunks.length - 1) {
+        utt.onend = () => setIsSpeaking(false);
+      }
+      synthRef.current!.speak(utt);
+    });
+  }, [voiceEnabled]);
+
+  const stopSpeaking = useCallback(() => {
+    synthRef.current?.cancel();
+    setIsSpeaking(false);
+  }, []);
+
+  // -- STT: microphone recording --
+  const startRecording = useCallback(() => {
+    if (!hasSpeechRecognition) return;
+    stopSpeaking();
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+
+    const recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'ru-RU';
+
+    recognition.onstart = () => setIsRecording(true);
+
+    recognition.onresult = (e: SpeechRecognitionEvent) => {
+      let transcript = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        transcript += e.results[i][0].transcript;
+      }
+      setInputValue(transcript);
+    };
+
+    recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', e.error);
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }, [hasSpeechRecognition, stopSpeaking]);
+
+  const stopRecording = useCallback(() => {
+    recognitionRef.current?.stop();
+  }, []);
+
+  const toggleRecording = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }, [isRecording, startRecording, stopRecording]);
+
+  // Auto-speak AI responses
+  useEffect(() => {
+    if (!voiceEnabled || messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    if (last.role === 'model' && last.id !== 'init-1') {
+      speakText(last.text);
+    }
+  }, [messages, voiceEnabled, speakText]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.abort();
+      synthRef.current?.cancel();
+    };
+  }, []);
 
   // -- QUIZ HANDLERS --
   const handleQuizAnswer = (value: number | string, category: string) => {
@@ -276,9 +412,48 @@ export const Assessment: React.FC = () => {
                 </button>
             )}
             <div className="relative flex items-end gap-2">
-                <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder={apiError ? "AI недоступен — настройте API ключ" : "Ваш ответ..."} className={`w-full bg-slate-100 dark:bg-[#1f2c34] text-slate-900 dark:text-white rounded-2xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent ${apiError ? 'opacity-60' : ''}`} disabled={isTyping || !!apiError} />
+                {/* Voice toggle */}
+                <button
+                  onClick={() => { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); }}
+                  className={`h-[50px] w-[50px] flex items-center justify-center rounded-full transition-all shrink-0 ${voiceEnabled ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-500' : 'bg-slate-100 dark:bg-[#1f2c34] text-slate-400'}`}
+                  title={voiceEnabled ? 'Озвучка включена' : 'Озвучка выключена'}
+                >
+                  <span className="material-symbols-outlined text-xl">{voiceEnabled ? 'volume_up' : 'volume_off'}</span>
+                </button>
+
+                <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder={apiError ? "AI недоступен — настройте API ключ" : isRecording ? "Говорите…" : "Ваш ответ..."} className={`w-full bg-slate-100 dark:bg-[#1f2c34] text-slate-900 dark:text-white rounded-2xl px-4 py-3.5 outline-none focus:ring-2 transition-all border border-transparent ${isRecording ? 'ring-2 ring-red-400/50' : 'focus:ring-primary/50'} ${apiError ? 'opacity-60' : ''}`} disabled={isTyping || !!apiError || isRecording} />
+
+                {/* Mic button */}
+                {hasSpeechRecognition && (
+                  <button
+                    onClick={toggleRecording}
+                    disabled={isTyping || !!apiError}
+                    className={`h-[50px] w-[50px] flex items-center justify-center rounded-full transition-all shrink-0 ${
+                      isRecording
+                        ? 'bg-red-500 text-white shadow-lg animate-pulse'
+                        : isTyping || apiError
+                          ? 'bg-slate-200 dark:bg-[#283843] text-slate-400 cursor-not-allowed'
+                          : 'bg-slate-100 dark:bg-[#1f2c34] text-slate-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20'
+                    }`}
+                    title={isRecording ? 'Остановить запись' : 'Голосовой ввод'}
+                  >
+                    <span className="material-symbols-outlined text-xl">{isRecording ? 'stop' : 'mic'}</span>
+                  </button>
+                )}
+
+                {/* Send button */}
                 <button onClick={handleSendMessage} disabled={!inputValue.trim() || isTyping || !!apiError} className={`h-[50px] w-[50px] flex items-center justify-center rounded-full transition-all shrink-0 ${inputValue.trim() && !isTyping && !apiError ? 'bg-primary text-white hover:bg-primary-hover shadow-lg' : 'bg-slate-200 dark:bg-[#283843] text-slate-400 cursor-not-allowed'}`}><span className="material-symbols-outlined">send</span></button>
             </div>
+
+            {/* Speaking indicator */}
+            {isSpeaking && (
+              <div className="flex items-center justify-center gap-2">
+                <button onClick={stopSpeaking} className="flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-600 transition-colors">
+                  <span className="material-symbols-outlined text-sm animate-pulse">graphic_eq</span>
+                  <span>Озвучивается… Нажмите чтобы остановить</span>
+                </button>
+              </div>
+            )}
           </div>
         </footer>
       </div>
