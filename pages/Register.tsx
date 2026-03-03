@@ -14,6 +14,7 @@ export const Register: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +22,10 @@ export const Register: React.FC = () => {
 
     if (!name || !email || !password) {
       setError(t('auth.fillRequired'));
+      return;
+    }
+    if (!consent) {
+      setError(t('auth.consentRequired'));
       return;
     }
     if (password.length < 6) {
@@ -127,7 +132,7 @@ export const Register: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                Подтвердите пароль <span className="text-red-400">*</span>
+                {t('auth.confirmPassword')} <span className="text-red-400">*</span>
               </label>
               <input
                 type="password"
@@ -138,9 +143,25 @@ export const Register: React.FC = () => {
               />
             </div>
 
+            {/* Consent */}
+            <label className="flex items-start gap-3 cursor-pointer mt-1">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={e => setConsent(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/50"
+              />
+              <span className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                {t('auth.consentText')}{' '}
+                <Link to="/privacy" className="text-primary hover:underline">{t('privacy.title')}</Link>
+                {' '}{t('auth.consentAnd')}{' '}
+                <Link to="/terms" className="text-primary hover:underline">{t('terms.title')}</Link>
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !consent}
               className="w-full py-3 rounded-xl bg-primary hover:bg-blue-600 disabled:opacity-60 text-white text-sm font-bold transition-colors shadow-lg shadow-primary/20 mt-2"
             >
               {loading ? t('auth.registerLoading') : t('auth.registerBtn')}
@@ -152,7 +173,7 @@ export const Register: React.FC = () => {
         <p className="text-center text-sm text-slate-500 mt-6">
           {t('auth.hasAccount')}{' '}
           <Link to="/login" className="text-primary hover:underline font-medium">
-            Войти
+            {t('login')}
           </Link>
         </p>
 

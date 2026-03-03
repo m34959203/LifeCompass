@@ -14,13 +14,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const isLanding = location.pathname === '/';
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
+  const isLegal = location.pathname === '/privacy' || location.pathname === '/terms';
   const isAssessment = location.pathname.startsWith('/assessment');
 
   // Landing and auth pages — no sidebar
   if (isLanding) {
     return <div className="h-screen w-full overflow-y-auto bg-white dark:bg-[#131b20]">{children}</div>;
   }
-  if (isAuth) {
+  if (isAuth || isLegal) {
     return <div className="h-screen w-full overflow-y-auto bg-background-light dark:bg-background-dark">{children}</div>;
   }
 

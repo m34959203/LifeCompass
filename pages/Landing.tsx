@@ -242,7 +242,15 @@ export const Landing: React.FC = () => {
             </div>
           </div>
           <div className="border-t border-slate-200 dark:border-[#283843] pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-slate-400 text-xs">{t('landing.footer')}</p>
+            <div className="flex flex-col md:flex-row items-center gap-2 text-xs text-slate-400">
+              <p>{t('landing.footer')}</p>
+              <span className="hidden md:inline">·</span>
+              <div className="flex items-center gap-3">
+                <Link to="/privacy" className="hover:text-primary transition-colors">{t('privacy.title')}</Link>
+                <span>·</span>
+                <Link to="/terms" className="hover:text-primary transition-colors">{t('terms.title')}</Link>
+              </div>
+            </div>
             <div className="flex items-center gap-4 text-xs text-slate-400">
               <span>{t('landing.country')}</span>
               <button onClick={() => setLang(lang === 'ru' ? 'kk' : 'ru')} className="hover:text-primary transition-colors cursor-pointer">{lang === 'ru' ? 'RU' : 'ҚАЗ'}</button>
