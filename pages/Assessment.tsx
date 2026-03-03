@@ -494,7 +494,7 @@ export const Assessment: React.FC = () => {
             {messages.length > 2 && (
               <button onClick={handleFinishChat} className="text-green-400 hover:text-green-300 transition-colors flex items-center gap-1">
                 <span className="material-symbols-outlined text-lg">check_circle</span>
-                <span className="text-xs hidden md:inline">Завершить</span>
+                <span className="text-xs hidden md:inline">{t('finish')}</span>
               </button>
             )}
           </div>
@@ -689,7 +689,7 @@ export const Assessment: React.FC = () => {
                 disabled={currentQuestionIndex === 0}
                 className="px-6 py-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-[#1f2c34] disabled:opacity-50 transition-colors"
              >
-                 Назад
+                 {t('back')}
              </button>
              <div className="px-6 py-2 text-slate-400 text-sm flex items-center">
                  {currentQuestionIndex + 1} / {assessment.questions?.length}
