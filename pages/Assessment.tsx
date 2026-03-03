@@ -166,10 +166,16 @@ export const Assessment: React.FC = () => {
     if (messages.length === 0) return; // wait until messages are set
 
     initSpoken.current = true;
+    // Show speaking state immediately while TTS loads
+    setIsSpeaking(true);
     textToSpeech(assessment.initialMessage).then(({ audio, mimeType }) => {
       if (audio) {
         playAudio(audio, mimeType);
+      } else {
+        setIsSpeaking(false);
       }
+    }).catch(() => {
+      setIsSpeaking(false);
     });
   }, [assessment, messages, apiError, voiceEnabled, playAudio]);
 
