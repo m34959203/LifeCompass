@@ -242,7 +242,12 @@ IMPORTANT: The summary must contain concrete, specific feedback based on what th
 
 Note: The transcript may contain speech recognition artifacts or incomplete words — interpret the meaning from context.
 
-Respond in Russian. Return valid JSON with keys: scores (object), archetype (string), summary (string), careers (array of strings), strengths (array of strings).
+FORMATTING RULES:
+- Use SPACES in category/trait names (e.g. "Уровень стресса", not "Уровень_стресса").
+- In the summary, use **bold** for key terms and separate paragraphs with newlines.
+- Do NOT use markdown headers (#) in the summary.
+
+Respond in Russian. Return valid JSON with keys: scores (object with space-separated keys), archetype (string), summary (string), careers (array of strings), strengths (array of strings).
   `;
 }
 

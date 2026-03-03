@@ -370,6 +370,8 @@ app.post('/api/analyze/chat', async (req, res) => {
 
       Note: The transcript may contain speech recognition artifacts or incomplete words — interpret the meaning from context.
 
+      FORMATTING: Use SPACES in score category names (e.g. "Уровень стресса", NOT "Уровень_стресса"). In the summary, use **bold** for key terms and separate paragraphs with newlines. Do NOT use markdown headers.
+
       Language: Russian.
     `;
 

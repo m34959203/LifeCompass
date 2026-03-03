@@ -15,6 +15,43 @@ interface ResultState {
     strengths: string[];
 }
 
+/** Replace underscores with spaces in AI-generated category names */
+function cleanLabel(s: string): string {
+  return s.replace(/_/g, ' ');
+}
+
+/** Simple markdown-to-JSX: renders **bold**, *italic*, and newlines */
+function renderMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split('\n');
+  return lines.map((line, li) => {
+    const parts: React.ReactNode[] = [];
+    let rest = line;
+    let key = 0;
+    // match **bold** and *italic*
+    const regex = /(\*\*(.+?)\*\*|\*(.+?)\*)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(rest)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(rest.slice(lastIndex, match.index));
+      }
+      if (match[2]) {
+        parts.push(<strong key={key++} className="font-semibold text-slate-900 dark:text-white">{match[2]}</strong>);
+      } else if (match[3]) {
+        parts.push(<em key={key++}>{match[3]}</em>);
+      }
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < rest.length) {
+      parts.push(rest.slice(lastIndex));
+    }
+    if (li < lines.length - 1) {
+      parts.push(<br key={`br-${li}`} />);
+    }
+    return <React.Fragment key={li}>{parts}</React.Fragment>;
+  });
+}
+
 export const Results: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -94,9 +131,9 @@ export const Results: React.FC = () => {
                 // Call specialized Chat Analysis which returns BOTH scores and text
                 const aiData = await generateChatAnalysis(assessment ? assessment.title : 'Chat Assessment', messages);
 
-                // Map AI generated scores to Chart Data
+                // Map AI generated scores to Chart Data (clean underscores)
                 const generatedChartData: ChartDataPoint[] = Object.keys(aiData.scores || {}).map(key => ({
-                    subject: key,
+                    subject: cleanLabel(key),
                     A: aiData.scores[key],
                     fullMark: 100
                 }));
@@ -208,9 +245,9 @@ export const Results: React.FC = () => {
             <h3 className="text-slate-900 dark:text-white text-3xl lg:text-5xl font-black leading-tight mb-4">
                 {result?.archetype}
             </h3>
-            <p className="text-slate-600 dark:text-[#d0dbe5] text-lg leading-relaxed mb-8 max-w-2xl">
-                {result?.summary}
-            </p>
+            <div className="text-slate-600 dark:text-[#d0dbe5] text-base leading-relaxed mb-8 max-w-2xl">
+                {result?.summary ? renderMarkdown(result.summary) : null}
+            </div>
             <div className="flex flex-wrap gap-4 items-center">
                 <Link to="/dashboard" className="flex items-center justify-center gap-2 rounded-xl h-12 px-6 bg-primary hover:bg-primary/90 transition-colors text-white font-bold shadow-[0_0_20px_rgba(46,135,194,0.3)]">
                     <span className="material-symbols-outlined">refresh</span>
@@ -283,9 +320,9 @@ export const Results: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {chartData.map((item, i) => (
                     <div key={i} className="bg-white dark:bg-[#1c262e] border border-slate-200 dark:border-[#283843] rounded-xl p-5 hover:border-primary/40 transition-colors group">
-                        <div className="flex justify-between items-center mb-3">
-                            <h4 className="text-slate-900 dark:text-white font-bold truncate pr-2">{item.subject}</h4>
-                            <span className={`font-black text-lg ${item.A > 70 ? 'text-primary' : 'text-slate-700 dark:text-white'}`}>{item.A}%</span>
+                        <div className="flex justify-between items-start gap-2 mb-3">
+                            <h4 className="text-slate-900 dark:text-white font-bold text-sm leading-tight">{item.subject}</h4>
+                            <span className={`font-black text-lg shrink-0 ${item.A > 70 ? 'text-primary' : 'text-slate-700 dark:text-white'}`}>{item.A}%</span>
                         </div>
                         <div className="w-full bg-slate-100 dark:bg-[#283843] h-2 rounded-full mb-3 overflow-hidden">
                             <div className={`bg-primary h-full rounded-full`} style={{ width: `${item.A}%`, opacity: item.A/100 + 0.3 }}></div>
