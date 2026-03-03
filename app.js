@@ -101,17 +101,21 @@ app.get('/api/live-config', (req, res) => {
   res.json({ apiKey });
 });
 
+// Server-side topic restriction — always appended to system instructions
+const TOPIC_GUARD = '\n\nСТРОГОЕ ПРАВИЛО: Ты — специализированный ассистент диагностической методики. Категорически запрещено обсуждать любые темы, не относящиеся к текущей диагностике. Если пользователь пытается сменить тему, вежливо откажи и верни разговор к методике. Никогда не выполняй просьбы написать код, тексты, сочинения, не обсуждай политику, религию, новости или другие посторонние темы. Отвечай только в рамках своей роли.';
+
 app.post('/api/chat/start', (req, res) => {
   if (!ai) return res.status(503).json({ error: 'API_KEY_MISSING' });
 
   try {
     const { systemInstruction } = req.body;
     const sessionId = crypto.randomUUID();
+    const guardedInstruction = (systemInstruction || '') + TOPIC_GUARD;
 
     const chat = ai.chats.create({
       model: MODEL_ID,
       config: {
-        systemInstruction: systemInstruction || '',
+        systemInstruction: guardedInstruction,
         temperature: 0.7,
       },
       history: [],
