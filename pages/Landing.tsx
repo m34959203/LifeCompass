@@ -220,7 +220,7 @@ export const Landing: React.FC = () => {
       {/* Footer */}
       <footer className="bg-white dark:bg-[#131b20] border-t border-slate-200 dark:border-[#283843] py-12 px-6">
         <div className="max-w-[1200px] mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-2xl text-primary">school</span>
@@ -229,22 +229,16 @@ export const Landing: React.FC = () => {
                 <p className="text-slate-500 text-sm leading-relaxed">{t('landing.systemDesc')}</p>
             </div>
             <div className="flex flex-col gap-3">
-                <h4 className="font-bold text-sm">{t('landing.forStudents')}</h4>
-                <Link to="/dashboard" className="text-slate-500 hover:text-primary text-sm transition-colors">{t('landing.allTests')}</Link>
-                <button onClick={() => scrollTo('assessments')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">{t('landing.methods')}</button>
-                <button onClick={() => scrollTo('how-it-works')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">{t('landing.howItWorks')}</button>
-            </div>
-            <div className="flex flex-col gap-3">
-                <h4 className="font-bold text-sm">{t('landing.forUniversities')}</h4>
-                <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">{t('landing.about')}</button>
-                <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">{t('landing.pricing')}</button>
-                <a href="mailto:contact@lifecompass.uni" className="text-slate-500 hover:text-primary text-sm transition-colors">{t('landing.contact')}</a>
+                <h4 className="font-bold text-sm">{t('landing.pages')}</h4>
+                <Link to="/dashboard" className="text-slate-500 hover:text-primary text-sm transition-colors">{t('home')}</Link>
+                <Link to={isAuthenticated ? '/history' : '/login'} className="text-slate-500 hover:text-primary text-sm transition-colors">{t('history')}</Link>
+                <Link to={isAuthenticated ? '/profile' : '/login'} className="text-slate-500 hover:text-primary text-sm transition-colors">{t('profile')}</Link>
             </div>
             <div className="flex flex-col gap-3">
                 <h4 className="font-bold text-sm">{t('landing.product')}</h4>
-                <Link to={isAuthenticated ? '/profile' : '/login'} className="text-slate-500 hover:text-primary text-sm transition-colors">{t('profile')}</Link>
-                <Link to={isAuthenticated ? '/history' : '/login'} className="text-slate-500 hover:text-primary text-sm transition-colors">{t('landing.historyTests')}</Link>
                 <button onClick={() => scrollTo('features')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">{t('landing.features')}</button>
+                <button onClick={() => scrollTo('how-it-works')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">{t('landing.howItWorks')}</button>
+                <button onClick={() => scrollTo('assessments')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">{t('landing.methods')}</button>
             </div>
           </div>
           <div className="border-t border-slate-200 dark:border-[#283843] pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
