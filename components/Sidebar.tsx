@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <div className="flex flex-col gap-6">
           {/* Logo */}
           <div className="flex items-center justify-between px-2">
-            <Link to="/dashboard" className="flex items-center gap-3" onClick={handleLinkClick}>
+            <Link to="/" className="flex items-center gap-3" onClick={handleLinkClick}>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 text-primary">
                 <span className="material-symbols-outlined text-3xl">school</span>
               </div>
