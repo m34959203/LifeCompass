@@ -10,7 +10,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { t } = useTranslation();
+  const { t, lang, setLang } = useTranslation();
 
   const isLanding = location.pathname === '/';
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
@@ -35,13 +35,21 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
                 <span className="font-bold text-lg text-slate-900 dark:text-white">LifeCompass Uni</span>
             </Link>
-            <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="p-2 -mr-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#283843] rounded-lg transition-colors"
-                aria-label={t('openMenu')}
-            >
-                <span className="material-symbols-outlined text-2xl">menu</span>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                  onClick={() => setLang(lang === 'ru' ? 'kk' : 'ru')}
+                  className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#283843] rounded-lg transition-colors text-xs font-bold"
+              >
+                  {lang === 'ru' ? 'ҚАЗ' : 'RU'}
+              </button>
+              <button
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="p-2 -mr-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#283843] rounded-lg transition-colors"
+                  aria-label={t('openMenu')}
+              >
+                  <span className="material-symbols-outlined text-2xl">menu</span>
+              </button>
+            </div>
         </div>
       )}
 

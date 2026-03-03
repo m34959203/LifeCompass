@@ -5,7 +5,7 @@ import { useTranslation } from '../i18n/LanguageContext';
 
 export const Login: React.FC = () => {
   const { login } = useAuth();
-  const { t } = useTranslation();
+  const { t, lang, setLang } = useTranslation();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +35,16 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark px-4 relative">
+      {/* Language Switcher */}
+      <button
+        onClick={() => setLang(lang === 'ru' ? 'kk' : 'ru')}
+        className="absolute top-4 right-4 flex items-center gap-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#283843] text-xs font-bold transition-colors"
+      >
+        <span className="material-symbols-outlined text-sm">translate</span>
+        {lang === 'ru' ? 'ҚАЗ' : 'RU'}
+      </button>
+
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
