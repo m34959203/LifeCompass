@@ -190,6 +190,8 @@ export const kk: Record<string, string> = {
   'profile.newTest': 'Жаңа тест тапсыру',
   'profile.viewHistory': 'Тарихты қарау',
   'profile.testsPassed': '{count} тест тапсырылды',
+  'profile.fieldPlaceholder': 'IT / Бағдарламалау',
+  'profile.universityExample': 'ҚазҰУ, Алматы',
   'profile.settings': 'Баптаулар',
   'profile.language': 'Тіл',
   'profile.switchLang': 'Интерфейс тілін таңдау',

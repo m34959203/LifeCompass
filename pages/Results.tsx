@@ -76,7 +76,7 @@ export const Results: React.FC = () => {
             setAssessmentTitle(assessment.title);
             const careerIds = ['career-riasec', 'soft-skills-360', 'values-motivation'];
             setIsCareerType(careerIds.includes(assessment.id));
-            const stateIds = ['health-stress', 'eq-assessment'];
+            const stateIds = ['health-stress', 'emotional-intelligence'];
             setIsStateType(stateIds.includes(assessment.id));
         }
 

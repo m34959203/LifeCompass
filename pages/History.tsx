@@ -35,7 +35,8 @@ export const History: React.FC = () => {
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const locale = lang === 'kk' ? 'kk-KZ' : 'ru-RU';
+    return d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   const getAssessmentGradient = (assessmentId: string) => {
@@ -54,7 +55,7 @@ export const History: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
         <div className="flex flex-col gap-2">
           <h1 className="text-slate-900 dark:text-white text-3xl md:text-4xl font-black leading-tight tracking-[-0.033em]">
-            История тестов
+            {t('history.title')}
           </h1>
           <p className="text-slate-500 dark:text-[#99b1c2] text-base font-normal max-w-2xl">
             {history.length > 0
@@ -67,7 +68,7 @@ export const History: React.FC = () => {
           className="bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
         >
           <span className="material-symbols-outlined text-[20px]">add</span>
-          Новый тест
+          {t('newTest')}
         </Link>
       </div>
 
@@ -100,7 +101,7 @@ export const History: React.FC = () => {
                         {formatDate(entry.date)}
                       </span>
                       <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">psychology</span>
+                        <span className="material-symbols-outlined text-sm">{['health-stress', 'emotional-intelligence'].includes(entry.assessmentId) ? 'monitor_heart' : 'psychology'}</span>
                         {entry.result.archetype}
                       </span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${entry.type === 'chat' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}>
@@ -125,12 +126,12 @@ export const History: React.FC = () => {
                       onClick={() => handleViewResult(entry)}
                       className="px-4 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white text-sm font-medium transition-colors"
                     >
-                      Подробнее
+                      {t('details')}
                     </button>
                     <button
                       onClick={() => handleDelete(entry.id)}
                       className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                      title="Удалить"
+                      title={t('delete')}
                     >
                       <span className="material-symbols-outlined text-lg">delete</span>
                     </button>
@@ -149,10 +150,10 @@ export const History: React.FC = () => {
             <span className="material-symbols-outlined text-4xl text-slate-400">history</span>
           </div>
           <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-            Начните свой путь
+            {t('history.startJourney')}
           </h3>
           <p className="text-slate-500 dark:text-[#99b1c2] text-sm max-w-md mb-6">
-            Пройдите один из тестов ниже, чтобы получить персональный анализ и рекомендации. Все результаты будут сохранены здесь.
+            {t('history.startDesc')}
           </p>
         </div>
       )}

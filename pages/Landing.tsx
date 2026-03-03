@@ -211,7 +211,7 @@ export const Landing: React.FC = () => {
             to="/dashboard"
             className="inline-flex items-center gap-2 mt-10 px-8 py-3 rounded-xl bg-primary hover:bg-blue-600 text-white font-bold transition-colors shadow-lg shadow-primary/30"
           >
-            Начать тестирование
+            {t('landing.startTesting')}
             <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </Link>
         </div>

@@ -148,7 +148,7 @@ export const Profile: React.FC = () => {
                           value={editForm.name}
                           onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
                           className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#131b20] text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all"
-                          placeholder="Ваше имя"
+                          placeholder={t('auth.yourName')}
                         />
                       </div>
                       <div>
@@ -177,7 +177,7 @@ export const Profile: React.FC = () => {
                           value={editForm.field}
                           onChange={(e) => setEditForm(prev => ({ ...prev, field: e.target.value }))}
                           className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#131b20] text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all"
-                          placeholder="IT / Разработка"
+                          placeholder={t('profile.fieldPlaceholder')}
                         />
                       </div>
                       <div className="sm:col-span-2">
@@ -187,7 +187,7 @@ export const Profile: React.FC = () => {
                           value={editForm.university}
                           onChange={(e) => setEditForm(prev => ({ ...prev, university: e.target.value }))}
                           className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#131b20] text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all"
-                          placeholder="КазНУ, Алматы"
+                          placeholder={t('profile.universityExample')}
                         />
                       </div>
                       <div className="sm:col-span-2 flex justify-end gap-3">
@@ -195,13 +195,13 @@ export const Profile: React.FC = () => {
                           onClick={handleCancel}
                           className="px-5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
                         >
-                          Отмена
+                          {t('cancel')}
                         </button>
                         <button
                           onClick={handleSave}
                           className="px-5 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors text-sm font-medium shadow-md shadow-primary/20"
                         >
-                          Сохранить
+                          {t('save')}
                         </button>
                       </div>
                     </div>

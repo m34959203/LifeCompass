@@ -322,7 +322,7 @@ export const Assessment: React.FC = () => {
       liveSessionRef.current = await sessionPromise;
     } catch (err: any) {
       console.error('Failed to start live session:', err);
-      setApiError(err.message || 'Ошибка запуска голосовой сессии.');
+      setApiError(err.message || t('assessment.errGeneral'));
       setIsTyping(false);
     }
   }, []);

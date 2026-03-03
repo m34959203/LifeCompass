@@ -190,6 +190,8 @@ export const ru: Record<string, string> = {
   'profile.newTest': 'Пройти новый тест',
   'profile.viewHistory': 'Посмотреть историю',
   'profile.testsPassed': '{count} тестов пройдено',
+  'profile.fieldPlaceholder': 'IT / Разработка',
+  'profile.universityExample': 'КазНУ, Алматы',
   'profile.settings': 'Настройки',
   'profile.language': 'Язык',
   'profile.switchLang': 'Выбрать язык интерфейса',
