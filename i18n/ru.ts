@@ -155,7 +155,9 @@ export const ru: Record<string, string> = {
   'results.strengths': 'Сильные стороны',
   'results.detailAnalysis': 'Детальный анализ черт',
   'results.recommended': 'Рекомендуемые направления',
+  'results.recommendations': 'Рекомендации',
   'results.recommendedByAi': 'Рекомендовано AI на основе ваших ответов',
+  'results.recommendedAction': 'Персональная рекомендация на основе диагностики',
   'results.demoMode': 'Демо-режим',
   'results.demoDesc': 'Это демонстрационные данные. Пройдите тест или диалог с AI для получения реального результата.',
 
