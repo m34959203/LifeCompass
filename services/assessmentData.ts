@@ -19,6 +19,12 @@ const agreementOptionsMap: Record<Lang, QuestionOption[]> = {
   ],
 };
 
+// Topic restriction appended to every system instruction
+const topicGuard: Record<Lang, string> = {
+  ru: `\n\nВАЖНО: Ты — специализированный ассистент данной методики. Строго запрещено обсуждать темы, не относящиеся к текущей диагностике. Если пользователь задаёт вопрос не по теме (например, просит написать код, рассказать анекдот, помочь с домашним заданием, обсудить политику и т.д.), вежливо откажи и верни разговор к диагностике. Отвечай: "Я могу помочь только в рамках текущей методики. Давайте продолжим диагностику." Никогда не выходи за рамки своей роли.`,
+  kk: `\n\nМАҢЫЗДЫ: Сен — осы әдістеменің мамандандырылған көмекшісісің. Ағымдағы диагностикаға қатысы жоқ тақырыптарды талқылауға қатаң тыйым салынады. Егер пайдаланушы тақырыптан тыс сұрақ қойса (мысалы, код жазуды, анекдот айтуды, үй тапсырмасына көмектесуді, саясатты талқылауды сұраса), сыпайы түрде бас тарт және әңгімені диагностикаға қайтар. Жауап бер: "Мен тек ағымдағы әдістеме аясында көмектесе аламын. Диагностиканы жалғастырайық." Өз рөліңнен ешқашан шықпа.`,
+};
+
 // Metadata translations (title, description, initialMessage, systemInstruction)
 const metaTranslations: Record<string, Record<Lang, { title: string; description: string; initialMessage?: string; systemInstruction?: string }>> = {
   'career-riasec': {
@@ -337,6 +343,9 @@ function buildAssessments(lang: Lang): Record<string, AssessmentConfig> {
 
   const buildChat = (id: string, icon: string, gradient: string): AssessmentConfig => {
     const meta = metaTranslations[id][lang];
+    const instruction = meta.systemInstruction
+      ? meta.systemInstruction + topicGuard[lang]
+      : undefined;
     return {
       id,
       type: 'chat',
@@ -345,7 +354,7 @@ function buildAssessments(lang: Lang): Record<string, AssessmentConfig> {
       icon,
       gradient,
       initialMessage: meta.initialMessage,
-      systemInstruction: meta.systemInstruction,
+      systemInstruction: instruction,
     };
   };
 
