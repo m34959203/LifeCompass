@@ -25,11 +25,22 @@ try {
   console.warn('Could not read .env file:', e.message);
 }
 
-// --- Load Gemini SDK (async due to ESM dependency) ---
+// --- Load Gemini SDK ---
 let GoogleGenAI = null;
 let Type = null;
 let geminiLoadError = null;
 let ai = null;
+
+try {
+  const genai = require('@google/genai');
+  GoogleGenAI = genai.GoogleGenAI;
+  Type = genai.Type;
+  console.log('@google/genai loaded successfully');
+} catch (err) {
+  geminiLoadError = err.message;
+  console.error('Failed to load @google/genai:', err.message);
+  console.error('AI features will be disabled.');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,26 +49,14 @@ const distPath = path.join(__dirname, 'dist');
 // --- Gemini AI Setup ---
 const apiKey = process.env.GEMINI_API_KEY || '';
 const MODEL_ID = 'gemini-2.0-flash';
-const googleClientId = process.env.GOOGLE_CLIENT_ID || '';
 
-// Dynamic import() to support ESM-only dependencies (p-retry)
-import('@google/genai').then((genai) => {
-  GoogleGenAI = genai.GoogleGenAI;
-  Type = genai.Type;
-  console.log('@google/genai loaded successfully');
-
-  if (apiKey) {
-    ai = new GoogleGenAI({ apiKey });
-    console.log('Gemini API configured (key starts with', apiKey.slice(0, 8) + '...)');
-  } else {
-    console.warn('GEMINI_API_KEY not set — AI features disabled');
-    console.warn('Set it via: Plesk env vars OR create .env file with GEMINI_API_KEY=your_key');
-  }
-}).catch((err) => {
-  geminiLoadError = err.message;
-  console.error('Failed to load @google/genai:', err.message);
-  console.error('AI features will be disabled.');
-});
+if (GoogleGenAI && apiKey) {
+  ai = new GoogleGenAI({ apiKey });
+  console.log('Gemini API configured (key starts with', apiKey.slice(0, 8) + '...)');
+} else if (!apiKey) {
+  console.warn('GEMINI_API_KEY not set — AI features disabled');
+  console.warn('Set it via: Plesk env vars OR create .env file with GEMINI_API_KEY=your_key');
+}
 
 // Chat sessions storage (in-memory)
 const chatSessions = new Map();
@@ -94,12 +93,6 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/status', (req, res) => {
   res.json({ configured: !!ai });
-});
-
-// Google OAuth Client ID for client-side sign-in
-app.get('/api/google-config', (req, res) => {
-  if (!googleClientId) return res.status(503).json({ error: 'GOOGLE_CLIENT_ID_MISSING' });
-  res.json({ clientId: googleClientId });
 });
 
 // Provide API key for client-side Gemini Live API connections
@@ -426,5 +419,5 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log('LifeCompass running on port ' + PORT);
-  console.log('Node.js ' + process.version + ' | Gemini SDK loading async...');
+  console.log('Node.js ' + process.version + ' | Gemini SDK ' + (GoogleGenAI ? 'ready' : 'unavailable'));
 });
