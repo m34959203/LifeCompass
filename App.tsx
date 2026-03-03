@@ -12,6 +12,8 @@ import { Assessment } from './pages/Assessment';
 import { Results } from './pages/Results';
 import { History } from './pages/History';
 import { Profile } from './pages/Profile';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { TermsOfService } from './pages/TermsOfService';
 
 const App: React.FC = () => {
   return (
@@ -24,6 +26,8 @@ const App: React.FC = () => {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
 
             {/* Open for all (guest + auth) */}
             <Route path="/dashboard" element={<Dashboard />} />

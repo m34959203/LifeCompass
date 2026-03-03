@@ -28,7 +28,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const saved = localStorage.getItem(LANG_KEY);
       if (saved === 'kk' || saved === 'ru') return saved;
     } catch {}
-    return 'ru';
+    return 'kk';
   });
 
   const setLang = useCallback((newLang: Lang) => {
