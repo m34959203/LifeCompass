@@ -155,7 +155,9 @@ export const kk: Record<string, string> = {
   'results.strengths': 'Күшті жақтар',
   'results.detailAnalysis': 'Сипаттардың егжей-тегжейлі талдауы',
   'results.recommended': 'Ұсынылатын бағыттар',
+  'results.recommendations': 'Ұсыныстар',
   'results.recommendedByAi': 'Жауаптарыңыз негізінде AI ұсынды',
+  'results.recommendedAction': 'Диагностика негізінде жеке ұсыныс',
   'results.demoMode': 'Демо-режим',
   'results.demoDesc': 'Бұл демонстрациялық деректер. Нақты нәтиже алу үшін тест немесе AI диалогын өтіңіз.',
 

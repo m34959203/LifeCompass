@@ -213,6 +213,12 @@ export const generateQuizAnalysis = async (
   }
 };
 
+/** Check if assessment is career-oriented (should suggest professions) */
+function isCareerAssessment(title: string): boolean {
+  const careerKeywords = ['RIASEC', 'профориентация', 'Soft Skills', 'кейс', 'карьерн', 'ценност', 'мансап', 'құндылық', 'кәсіби бағдар'];
+  return careerKeywords.some(kw => title.toLowerCase().includes(kw.toLowerCase()));
+}
+
 /**
  * Build analysis prompt for chat transcripts
  */
@@ -220,6 +226,12 @@ function buildChatAnalysisPrompt(assessmentTitle: string, messages: Message[]): 
   const transcript = messages
     .map((m) => `${m.role === 'user' ? 'User' : 'AI Mentor'}: ${m.text}`)
     .join('\n');
+
+  const isCareer = isCareerAssessment(assessmentTitle);
+
+  const careersInstruction = isCareer
+    ? '5. Suggest 3 specific career paths or job roles relevant to the user.'
+    : '5. Suggest 3 specific, actionable recommendations for improving the user\'s current state (e.g. techniques, habits, resources — NOT job titles or professions).';
 
   return `
 Analyze the following conversation transcript for the assessment: "${assessmentTitle}".
@@ -235,10 +247,11 @@ Task:
    - Specific observations from the conversation
    - Current state/level assessment with concrete indicators
    - Personalized recommendations (at least 3 specific techniques or actions)
-5. Suggest 3 specific career paths or development directions.
+${careersInstruction}
 6. List 3 key strengths identified from the conversation.
 
 IMPORTANT: The summary must contain concrete, specific feedback based on what the user actually said. Avoid generic advice. If this is a stress/burnout assessment, clearly state the estimated stress level (low/moderate/high/critical) and specific burnout indicators found.
+${!isCareer ? 'IMPORTANT: The "careers" field must contain practical self-improvement recommendations (techniques, exercises, resources), NOT professions or job titles.' : ''}
 
 Note: The transcript may contain speech recognition artifacts or incomplete words — interpret the meaning from context.
 

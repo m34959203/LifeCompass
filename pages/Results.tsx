@@ -62,6 +62,7 @@ export const Results: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [assessmentTitle, setAssessmentTitle] = useState(t('results.title'));
   const [saved, setSaved] = useState(false);
+  const [isCareerType, setIsCareerType] = useState(true);
   const savedRef = useRef(false);
 
   useEffect(() => {
@@ -70,7 +71,11 @@ export const Results: React.FC = () => {
         const assessmentId = state.assessmentId || id;
         const assessment = getAssessmentById(assessmentId || '', lang);
 
-        if (assessment) setAssessmentTitle(assessment.title);
+        if (assessment) {
+            setAssessmentTitle(assessment.title);
+            const careerIds = ['career-riasec', 'soft-skills-360', 'values-motivation'];
+            setIsCareerType(careerIds.includes(assessment.id));
+        }
 
         // --- PATH 0: FROM HISTORY (pre-computed) ---
         if (state.fromHistory && state.savedScores && state.savedResult) {
@@ -332,20 +337,28 @@ export const Results: React.FC = () => {
             </div>
 
             <div className="mt-4">
-                <h3 className="text-slate-900 dark:text-white text-xl font-bold mb-4">{t('results.recommended')}</h3>
+                <h3 className="text-slate-900 dark:text-white text-xl font-bold mb-4">
+                    {isCareerType ? t('results.recommended') : t('results.recommendations')}
+                </h3>
                 <div className="bg-white dark:bg-[#1c262e] border border-slate-200 dark:border-[#283843] rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-[#283843]">
-                    {result?.careers?.map((career, i) => (
-                         <div key={i} className="p-5 flex gap-4 items-center hover:bg-slate-50 dark:hover:bg-[#232d36] transition-colors cursor-pointer">
-                            <div className={`size-12 rounded-lg ${['bg-blue-500/10 text-blue-500', 'bg-purple-500/10 text-purple-500', 'bg-orange-500/10 text-orange-500'][i % 3]} flex items-center justify-center shrink-0`}>
-                                <span className="material-symbols-outlined">work</span>
+                    {result?.careers?.map((career, i) => {
+                         const careerColors = ['bg-blue-500/10 text-blue-500', 'bg-purple-500/10 text-purple-500', 'bg-orange-500/10 text-orange-500'];
+                         const recColors = ['bg-emerald-500/10 text-emerald-500', 'bg-cyan-500/10 text-cyan-500', 'bg-amber-500/10 text-amber-500'];
+                         const colors = isCareerType ? careerColors : recColors;
+                         const icon = isCareerType ? 'work' : 'tips_and_updates';
+                         const subtitle = isCareerType ? t('results.recommendedByAi') : t('results.recommendedAction');
+                         return (
+                            <div key={i} className="p-5 flex gap-4 items-start hover:bg-slate-50 dark:hover:bg-[#232d36] transition-colors">
+                                <div className={`size-12 rounded-lg ${colors[i % 3]} flex items-center justify-center shrink-0`}>
+                                    <span className="material-symbols-outlined">{icon}</span>
+                                </div>
+                                <div className="flex-1">
+                                    <h5 className="text-slate-900 dark:text-white font-bold">{career}</h5>
+                                    <p className="text-slate-500 dark:text-[#99b1c2] text-sm">{subtitle}</p>
+                                </div>
                             </div>
-                            <div className="flex-1">
-                                <h5 className="text-slate-900 dark:text-white font-bold text-lg">{career}</h5>
-                                <p className="text-slate-500 dark:text-[#99b1c2] text-sm">{t('results.recommendedByAi')}</p>
-                            </div>
-                             <span className="material-symbols-outlined text-slate-400">chevron_right</span>
-                        </div>
-                    ))}
+                         );
+                    })}
                 </div>
             </div>
         </div>

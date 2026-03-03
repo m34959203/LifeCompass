@@ -349,6 +349,13 @@ app.post('/api/analyze/chat', async (req, res) => {
       .map((m) => `${m.role === 'user' ? 'User' : 'AI Mentor'}: ${m.text}`)
       .join('\n');
 
+    const careerKeywords = ['RIASEC', 'профориентация', 'Soft Skills', 'кейс', 'карьерн', 'ценност'];
+    const isCareer = careerKeywords.some(kw => assessmentTitle.toLowerCase().includes(kw.toLowerCase()));
+
+    const careersInstruction = isCareer
+      ? '5. Suggest 3 specific career paths or job roles relevant to the user.'
+      : '5. Suggest 3 specific, actionable recommendations for improving the user\'s current state (techniques, habits, resources — NOT job titles or professions).';
+
     const prompt = `
       Analyze the following conversation transcript for the assessment: "${assessmentTitle}".
 
@@ -363,10 +370,11 @@ app.post('/api/analyze/chat', async (req, res) => {
          - Specific observations from the conversation
          - Current state/level assessment with concrete indicators
          - Personalized recommendations (at least 3 specific techniques or actions)
-      5. Suggest 3 specific career paths or development directions.
+      ${careersInstruction}
       6. List 3 key strengths identified from the conversation.
 
       IMPORTANT: The summary must contain concrete, specific feedback based on what the user actually said. Avoid generic advice. If this is a stress/burnout assessment, clearly state the estimated stress level (low/moderate/high/critical) and specific burnout indicators found.
+      ${!isCareer ? 'IMPORTANT: The "careers" field must contain practical self-improvement recommendations (techniques, exercises, resources), NOT professions or job titles.' : ''}
 
       Note: The transcript may contain speech recognition artifacts or incomplete words — interpret the meaning from context.
 
