@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
+  const { t } = useTranslation();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -43,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 text-primary">
                 <span className="material-symbols-outlined text-3xl">school</span>
               </div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">LifeCompass Uni</h2>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{t('sidebar.title')}</h2>
             </Link>
             {/* Mobile Close Button */}
             <button
@@ -66,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               }`}
             >
               <span className="material-symbols-outlined">dashboard</span>
-              <p className="text-sm font-medium">Главная</p>
+              <p className="text-sm font-medium">{t('home')}</p>
             </Link>
 
             {isAuthenticated && (
@@ -81,7 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   }`}
                 >
                   <span className="material-symbols-outlined">history</span>
-                  <p className="text-sm font-medium">История</p>
+                  <p className="text-sm font-medium">{t('history')}</p>
                 </Link>
 
                 <Link
@@ -94,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   }`}
                 >
                   <span className="material-symbols-outlined">person</span>
-                  <p className="text-sm font-medium">Профиль</p>
+                  <p className="text-sm font-medium">{t('profile')}</p>
                 </Link>
               </>
             )}
@@ -116,8 +118,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <span className="material-symbols-outlined text-lg">add</span>
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-900 dark:text-white">Новый тест</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Выбрать методику</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-white">{t('newTest')}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('selectMethod')}</p>
               </div>
             </Link>
           </div>
@@ -138,10 +140,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </div>
               <div className="flex flex-col overflow-hidden flex-1">
                 <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                  {user?.name || 'Пользователь'}
+                  {user?.name || t('user')}
                 </h3>
                 <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                  {user?.email || 'Настроить профиль'}
+                  {user?.email || t('configureProfile')}
                 </p>
               </div>
             </Link>
@@ -150,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-sm"
             >
               <span className="material-symbols-outlined text-lg">logout</span>
-              Выйти
+              {t('logout')}
             </button>
           </div>
         ) : (
@@ -161,14 +163,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-blue-600 text-white text-sm font-bold transition-colors shadow-lg shadow-primary/20"
             >
               <span className="material-symbols-outlined text-lg">login</span>
-              Войти
+              {t('login')}
             </Link>
             <Link
               to="/register"
               onClick={handleLinkClick}
               className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#283843] text-sm font-medium transition-colors"
             >
-              Регистрация
+              {t('registration')}
             </Link>
           </div>
         )}

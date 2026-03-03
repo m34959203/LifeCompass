@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getHistory } from '../services/historyService';
+import { useTranslation, Lang } from '../i18n/LanguageContext';
 
 interface ProfileForm {
   name: string;
@@ -26,6 +27,7 @@ const saveExtra = (data: { age: string; field: string }) => {
 
 export const Profile: React.FC = () => {
   const { user, updateProfile } = useAuth();
+  const { t, lang, setLang } = useTranslation();
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [isEditing, setIsEditing] = useState(false);
   const extra = loadExtra();
@@ -74,8 +76,8 @@ export const Profile: React.FC = () => {
     <div className="p-6 lg:p-10 max-w-5xl mx-auto flex flex-col gap-8 pb-10">
       {/* Page Header */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Профиль</h1>
-        <p className="text-slate-500 dark:text-[#99b1c2] text-base lg:text-lg">Управление аккаунтом и настройками.</p>
+        <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">{t('profile.title')}</h1>
+        <p className="text-slate-500 dark:text-[#99b1c2] text-base lg:text-lg">{t('profile.subtitle')}</p>
       </div>
 
       {/* Profile Card */}
@@ -90,7 +92,7 @@ export const Profile: React.FC = () => {
         <div className="flex flex-col items-center md:items-start flex-1 gap-2 pt-2">
             <div className="text-center md:text-left">
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {user?.name || 'Пользователь'}
+                  {user?.name || t('user')}
                 </h2>
                 <p className="text-slate-500 dark:text-[#99b1c2]">
                   {user?.email || '—'}
@@ -103,7 +105,7 @@ export const Profile: React.FC = () => {
                 </span>
                 <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-xs font-medium text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">history</span>
-                    {historyCount} тестов пройдено
+                    {t('profile.testsPassed', { count: historyCount })}
                 </span>
             </div>
         </div>
@@ -112,7 +114,7 @@ export const Profile: React.FC = () => {
               onClick={() => setIsEditing(!isEditing)}
               className="w-full md:w-auto px-5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
             >
-              {isEditing ? 'Отменить' : 'Редактировать'}
+              {isEditing ? t('cancel') : t('profile.edit')}
             </button>
         </div>
       </div>
@@ -124,7 +126,7 @@ export const Profile: React.FC = () => {
             <div className="bg-white dark:bg-[#1e272e] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-[#1a2228]">
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary">person_search</span> Мои данные
+                        <span className="material-symbols-outlined text-primary">person_search</span> {t('profile.myData')}
                     </h3>
                     {isEditing && (
                       <button
@@ -132,7 +134,7 @@ export const Profile: React.FC = () => {
                         className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1"
                       >
                         <span className="material-symbols-outlined text-lg">save</span>
-                        Сохранить
+                        {t('save')}
                       </button>
                     )}
                 </div>
@@ -140,7 +142,7 @@ export const Profile: React.FC = () => {
                   {isEditing ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
-                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">Имя</label>
+                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">{t('auth.name')}</label>
                         <input
                           type="text"
                           value={editForm.name}
@@ -150,7 +152,7 @@ export const Profile: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">Email</label>
+                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">{t('auth.email')}</label>
                         <input
                           type="email"
                           value={user?.email || ''}
@@ -159,7 +161,7 @@ export const Profile: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">Возраст</label>
+                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">{t('profile.age')}</label>
                         <input
                           type="text"
                           value={editForm.age}
@@ -169,7 +171,7 @@ export const Profile: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">Специальность</label>
+                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">{t('profile.field')}</label>
                         <input
                           type="text"
                           value={editForm.field}
@@ -179,7 +181,7 @@ export const Profile: React.FC = () => {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">Университет / Город</label>
+                        <label className="text-sm font-medium text-slate-500 dark:text-[#99b1c2] block mb-1.5">{t('profile.universityCity')}</label>
                         <input
                           type="text"
                           value={editForm.university}
@@ -206,16 +208,16 @@ export const Profile: React.FC = () => {
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
-                        <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">Возраст</span>
-                        <p className="text-base text-slate-900 dark:text-white">{extra.age || 'Не указан'}</p>
+                        <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">{t('profile.age')}</span>
+                        <p className="text-base text-slate-900 dark:text-white">{extra.age || t('profile.notSpecified')}</p>
                       </div>
                       <div>
-                        <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">Специальность</span>
-                        <p className="text-base text-slate-900 dark:text-white">{extra.field || 'Не указана'}</p>
+                        <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">{t('profile.field')}</span>
+                        <p className="text-base text-slate-900 dark:text-white">{extra.field || t('profile.notSpecifiedFem')}</p>
                       </div>
                       <div>
-                        <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">Университет / Город</span>
-                        <p className="text-base text-slate-900 dark:text-white">{user?.university || 'Не указан'}</p>
+                        <span className="text-sm font-medium text-slate-500 dark:text-[#99b1c2]">{t('profile.universityCity')}</span>
+                        <p className="text-base text-slate-900 dark:text-white">{user?.university || t('profile.notSpecified')}</p>
                       </div>
                     </div>
                   )}
@@ -229,14 +231,14 @@ export const Profile: React.FC = () => {
             <div className="bg-white dark:bg-[#1e272e] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden h-fit">
                 <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#1a2228]">
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary">tune</span> Настройки
+                        <span className="material-symbols-outlined text-primary">tune</span> {t('profile.settings')}
                     </h3>
                 </div>
                 <div className="p-6 flex flex-col gap-6">
                     <div className="flex items-center justify-between">
                          <div className="flex flex-col">
-                             <span className="text-sm font-medium text-slate-900 dark:text-white">Тёмная тема</span>
-                             <span className="text-xs text-slate-500 dark:text-slate-400">Переключить оформление</span>
+                             <span className="text-sm font-medium text-slate-900 dark:text-white">{t('profile.darkTheme')}</span>
+                             <span className="text-xs text-slate-500 dark:text-slate-400">{t('profile.switchTheme')}</span>
                          </div>
                          <label className="relative inline-flex items-center cursor-pointer">
                              <input
@@ -248,6 +250,27 @@ export const Profile: React.FC = () => {
                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
                          </label>
                     </div>
+                
+                    <div className="flex items-center justify-between">
+                         <div className="flex flex-col">
+                             <span className="text-sm font-medium text-slate-900 dark:text-white">{t('profile.language')}</span>
+                             <span className="text-xs text-slate-500 dark:text-slate-400">{t('profile.switchLang')}</span>
+                         </div>
+                         <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+                             <button
+                               onClick={() => setLang('ru')}
+                               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${lang === 'ru' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                             >
+                               RU
+                             </button>
+                             <button
+                               onClick={() => setLang('kk')}
+                               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${lang === 'kk' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                             >
+                               ҚАЗ
+                             </button>
+                         </div>
+                    </div>
                 </div>
             </div>
 
@@ -255,7 +278,7 @@ export const Profile: React.FC = () => {
             <div className="bg-white dark:bg-[#1e272e] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden h-fit">
                 <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#1a2228]">
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary">bolt</span> Быстрые действия
+                        <span className="material-symbols-outlined text-primary">bolt</span> {t('profile.quickActions')}
                     </h3>
                 </div>
                 <div className="p-4 flex flex-col gap-2">
@@ -264,14 +287,14 @@ export const Profile: React.FC = () => {
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
                       <span className="material-symbols-outlined text-primary">play_arrow</span>
-                      <span className="text-sm font-medium text-slate-700 dark:text-white">Пройти новый тест</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-white">{t('profile.newTest')}</span>
                     </Link>
                     <Link
                       to="/history"
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
                       <span className="material-symbols-outlined text-primary">history</span>
-                      <span className="text-sm font-medium text-slate-700 dark:text-white">Посмотреть историю</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-white">{t('profile.viewHistory')}</span>
                     </Link>
                 </div>
             </div>

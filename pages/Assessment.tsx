@@ -4,6 +4,7 @@ import { startChatSession, sendMessageToAI, isApiConfigured, getLiveApiKey } fro
 import { getAssessmentById } from '../services/assessmentData';
 import { AssessmentConfig, Message, Answer } from '../types';
 import { PsychologistAvatar } from '../components/PsychologistAvatar';
+import { useTranslation } from '../i18n/LanguageContext';
 import { GoogleGenAI, Modality } from '@google/genai';
 
 // --- Audio helpers (PCM encoding/decoding for Gemini Live API) ---
@@ -56,6 +57,7 @@ function createPcmBlob(data: Float32Array): { data: string; mimeType: string } {
 
 export const Assessment: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { t, lang } = useTranslation();
   const navigate = useNavigate();
   const [assessment, setAssessment] = useState<AssessmentConfig | null>(null);
 
@@ -150,7 +152,7 @@ export const Assessment: React.FC = () => {
 
       const config = await getLiveApiKey();
       if (!config?.apiKey) {
-        setApiError('AI-сервис недоступен. GEMINI_API_KEY не настроен на сервере.');
+        setApiError(t('assessment.errNoApi'));
         setIsTyping(false);
         return;
       }
@@ -162,11 +164,11 @@ export const Assessment: React.FC = () => {
         streamRef.current = stream;
       } catch (mediaError: any) {
         if (mediaError.name === 'NotFoundError' || mediaError.name === 'DevicesNotFoundError') {
-          setApiError('Микрофон не найден. Подключите устройство.');
+          setApiError(t('assessment.errNoMic'));
         } else if (mediaError.name === 'NotAllowedError' || mediaError.name === 'PermissionDeniedError') {
-          setApiError('Доступ к микрофону отклонен.');
+          setApiError(t('assessment.errMicDenied'));
         } else {
-          setApiError('Не удалось получить доступ к микрофону.');
+          setApiError(t('assessment.errMicAccess'));
         }
         setIsTyping(false);
         return;
@@ -206,8 +208,8 @@ export const Assessment: React.FC = () => {
 
             // Send initial greeting trigger
             const greetingPrompt = assessmentConfig.initialMessage
-              ? `Начни разговор. Поприветствуй пользователя и скажи следующее: ${assessmentConfig.initialMessage}`
-              : 'Поприветствуй пользователя и представься.';
+              ? t('assessment.greetWithMsg', { msg: assessmentConfig.initialMessage || '' })
+              : t('assessment.greetPrompt');
 
             liveSessionPromiseRef.current!.then((session: any) => {
               session.sendClientContent({
@@ -293,7 +295,7 @@ export const Assessment: React.FC = () => {
 
           onerror: (e: any) => {
             console.error('Live API Error:', e);
-            setApiError('Ошибка соединения с AI.');
+            setApiError(t('assessment.errConnection'));
             setIsRecording(false);
             setIsSpeaking(false);
           },
@@ -347,7 +349,7 @@ export const Assessment: React.FC = () => {
         setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: responseText, timestamp: new Date() }]);
       } catch (error) {
         console.error(error);
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: 'Произошла ошибка. Попробуйте ещё раз.', timestamp: new Date() }]);
+        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: t('assessment.errGeneral'), timestamp: new Date() }]);
       }
       setIsTyping(false);
     }
@@ -374,7 +376,7 @@ export const Assessment: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       if (!id) return;
-      const data = getAssessmentById(id);
+      const data = getAssessmentById(id, lang);
       if (!data) return;
       setAssessment(data);
 
@@ -414,7 +416,7 @@ export const Assessment: React.FC = () => {
     }
   };
 
-  if (!assessment) return <div className="h-full flex items-center justify-center text-slate-400">Загрузка...</div>;
+  if (!assessment) return <div className="h-full flex items-center justify-center text-slate-400">{t('loading')}</div>;
 
   // --- RENDER HEADER (Common) ---
   const Header = () => (
@@ -435,8 +437,8 @@ export const Assessment: React.FC = () => {
                       <span className={`w-2 h-2 rounded-full ${assessment.type === 'chat' ? (apiError ? 'bg-red-500' : 'bg-green-500') : 'bg-blue-500'}`}></span>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
                           {assessment.type === 'chat'
-                            ? (apiError ? 'Не подключено' : 'AI-ассистент')
-                            : `Вопрос ${currentQuestionIndex + 1} из ${assessment.questions?.length}`}
+                            ? (apiError ? t('assessment.notConnected') : t('assessment.aiAssistant'))
+                            : t('assessment.questionOf', { current: currentQuestionIndex + 1, total: assessment.questions?.length || 0 })}
                       </span>
                   </div>
               </div>
@@ -447,13 +449,13 @@ export const Assessment: React.FC = () => {
                     onClick={handleFinishChat}
                     className="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-bold bg-green-500 text-white hover:bg-green-600 transition-colors shadow-sm"
                  >
-                    <span>Завершить</span>
+                    <span>{t('finish')}</span>
                     <span className="material-symbols-outlined text-lg">check</span>
                  </button>
             )}
             <Link to="/dashboard" className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-[#283843] transition-colors">
                 <span className="material-symbols-outlined text-lg">close</span>
-                <span>Выход</span>
+                <span>{t('exit')}</span>
             </Link>
           </div>
       </div>
@@ -463,11 +465,11 @@ export const Assessment: React.FC = () => {
   // --- RENDER CHAT (VOICE ASSISTANT) INTERFACE ---
   if (assessment.type === 'chat') {
     // Determine status text
-    const statusText = isTyping ? 'Подключение…'
-      : isSpeaking ? 'Говорю…'
-      : isRecording ? (voiceEnabled ? 'Слушаю вас…' : 'Микрофон выкл')
-      : apiError ? 'Не подключено'
-      : 'Подключение…';
+    const statusText = isTyping ? t('assessment.connecting')
+      : isSpeaking ? t('assessment.speaking')
+      : isRecording ? (voiceEnabled ? t('assessment.listening') : t('assessment.micOff'))
+      : apiError ? t('assessment.notConnected')
+      : t('assessment.connecting');
 
     // Last AI message for subtitle
     const lastAiMsg = [...messages].reverse().find(m => m.role === 'model');
@@ -479,7 +481,7 @@ export const Assessment: React.FC = () => {
         <header className="flex-none z-20 px-4 py-3 flex items-center justify-between">
           <Link to="/dashboard" className="text-slate-400 hover:text-white transition-colors flex items-center gap-2">
             <span className="material-symbols-outlined">arrow_back</span>
-            <span className="text-sm hidden md:inline">Назад</span>
+            <span className="text-sm hidden md:inline">{t('back')}</span>
           </Link>
           <div className="text-center">
             <h1 className="text-sm font-semibold text-white/80">{assessment.title}</h1>
@@ -526,7 +528,7 @@ export const Assessment: React.FC = () => {
             {/* Show user's last message after turn */}
             {!isRecording && !isSpeaking && !isTyping && lastUserMsg && !inputValue && (
               <p className="text-slate-500 text-sm">
-                Вы: {lastUserMsg.text.length > 80 ? lastUserMsg.text.slice(0, 80) + '…' : lastUserMsg.text}
+                {t('assessment.you', { text: lastUserMsg.text.length > 80 ? lastUserMsg.text.slice(0, 80) + '…' : lastUserMsg.text })}
               </p>
             )}
 
@@ -593,7 +595,7 @@ export const Assessment: React.FC = () => {
               {/* Text input */}
               <button
                 onClick={() => {
-                  const text = prompt('Введите текст:');
+                  const text = prompt(t('assessment.enterText'));
                   if (text?.trim()) {
                     handleSendMessage(text.trim());
                   }
@@ -602,7 +604,7 @@ export const Assessment: React.FC = () => {
                 className="text-slate-500 hover:text-white transition-colors flex flex-col items-center gap-1 disabled:opacity-30"
               >
                 <span className="material-symbols-outlined text-xl">keyboard</span>
-                <span className="text-[10px]">Текст</span>
+                <span className="text-[10px]">{t('text')}</span>
               </button>
 
               {/* Volume/mic toggle */}
@@ -611,7 +613,7 @@ export const Assessment: React.FC = () => {
                 className={`flex flex-col items-center gap-1 transition-colors ${voiceEnabled ? 'text-blue-400 hover:text-blue-300' : 'text-slate-600 hover:text-slate-400'}`}
               >
                 <span className="material-symbols-outlined text-xl">{voiceEnabled ? 'mic' : 'mic_off'}</span>
-                <span className="text-[10px]">{voiceEnabled ? 'Микрофон вкл' : 'Микрофон выкл'}</span>
+                <span className="text-[10px]">{voiceEnabled ? t('assessment.micOn') : t('assessment.micOff')}</span>
               </button>
 
               {/* Finish */}
@@ -621,7 +623,7 @@ export const Assessment: React.FC = () => {
                   className="text-green-400 hover:text-green-300 transition-colors flex flex-col items-center gap-1"
                 >
                   <span className="material-symbols-outlined text-xl">check_circle</span>
-                  <span className="text-[10px]">Готово</span>
+                  <span className="text-[10px]">{t('done')}</span>
                 </button>
               )}
             </div>

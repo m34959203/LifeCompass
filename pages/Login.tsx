@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const Login: React.FC = () => {
   const { login } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,7 +17,7 @@ export const Login: React.FC = () => {
     setError('');
 
     if (!email || !password) {
-      setError('Заполните все поля');
+      setError(t('auth.fillAll'));
       return;
     }
 
@@ -25,7 +27,7 @@ export const Login: React.FC = () => {
       if (result.success) {
         navigate('/dashboard');
       } else {
-        setError(result.error || 'Ошибка авторизации');
+        setError(result.error || t('auth.loginError'));
       }
     } finally {
       setLoading(false);
@@ -40,8 +42,8 @@ export const Login: React.FC = () => {
           <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center text-primary mb-4">
             <span className="material-symbols-outlined text-3xl">school</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">LifeCompass Uni</h1>
-          <p className="text-slate-500 text-sm mt-1">Вход в личный кабинет</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('sidebar.title')}</h1>
+          <p className="text-slate-500 text-sm mt-1">{t('auth.loginTitle')}</p>
         </div>
 
         {/* Form */}
@@ -54,7 +56,7 @@ export const Login: React.FC = () => {
 
           <div className="flex flex-col gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Email</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('auth.email')}</label>
               <input
                 type="email"
                 value={email}
@@ -65,7 +67,7 @@ export const Login: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Пароль</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('auth.password')}</label>
               <input
                 type="password"
                 value={password}
@@ -80,14 +82,14 @@ export const Login: React.FC = () => {
               disabled={loading}
               className="w-full py-3 rounded-xl bg-primary hover:bg-blue-600 disabled:opacity-60 text-white text-sm font-bold transition-colors shadow-lg shadow-primary/20 mt-2"
             >
-              {loading ? 'Вход...' : 'Войти'}
+              {loading ? t('auth.loginLoading') : t('auth.loginBtn')}
             </button>
           </div>
         </form>
 
         {/* Register link */}
         <p className="text-center text-sm text-slate-500 mt-6">
-          Нет аккаунта?{' '}
+          {t('auth.noAccount')}{' '}
           <Link to="/register" className="text-primary hover:underline font-medium">
             Зарегистрироваться
           </Link>
@@ -97,7 +99,7 @@ export const Login: React.FC = () => {
         <p className="text-center mt-4">
           <Link to="/" className="text-slate-400 hover:text-slate-600 text-xs flex items-center justify-center gap-1">
             <span className="material-symbols-outlined text-sm">arrow_back</span>
-            На главную
+            {t('toMain')}
           </Link>
         </p>
       </div>

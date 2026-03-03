@@ -1,6 +1,7 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { LanguageProvider } from './i18n/LanguageContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { Landing } from './pages/Landing';
@@ -15,6 +16,7 @@ import { Profile } from './pages/Profile';
 const App: React.FC = () => {
   return (
     <HashRouter>
+      <LanguageProvider>
       <AuthProvider>
         <Layout>
           <Routes>
@@ -36,6 +38,7 @@ const App: React.FC = () => {
           </Routes>
         </Layout>
       </AuthProvider>
+      </LanguageProvider>
     </HashRouter>
   );
 };
