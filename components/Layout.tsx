@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { useLocation } from 'react-router-dom';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { t } = useTranslation();
 
   const isLanding = location.pathname === '/';
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
@@ -36,7 +38,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button
                 onClick={() => setIsSidebarOpen(true)}
                 className="p-2 -mr-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#283843] rounded-lg transition-colors"
-                aria-label="Открыть меню"
+                aria-label={t('openMenu')}
             >
                 <span className="material-symbols-outlined text-2xl">menu</span>
             </button>

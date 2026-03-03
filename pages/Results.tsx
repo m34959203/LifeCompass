@@ -6,6 +6,7 @@ import { getAssessmentById } from '../services/assessmentData';
 import { generateQuizAnalysis, generateChatAnalysis } from '../services/geminiService';
 import { saveResult } from '../services/historyService';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface ResultState {
     archetype: string;
@@ -18,10 +19,11 @@ export const Results: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const { user } = useAuth();
+  const { t, lang } = useTranslation();
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [result, setResult] = useState<ResultState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [assessmentTitle, setAssessmentTitle] = useState("Результаты");
+  const [assessmentTitle, setAssessmentTitle] = useState(t('results.title'));
   const [saved, setSaved] = useState(false);
   const savedRef = useRef(false);
 
@@ -29,7 +31,7 @@ export const Results: React.FC = () => {
     const processResults = async () => {
         const state = location.state || {};
         const assessmentId = state.assessmentId || id;
-        const assessment = getAssessmentById(assessmentId || '');
+        const assessment = getAssessmentById(assessmentId || '', lang);
 
         if (assessment) setAssessmentTitle(assessment.title);
 
@@ -123,8 +125,8 @@ export const Results: React.FC = () => {
             { subject: 'Конвенциональный', A: 70, fullMark: 100 },
         ]);
         setResult({
-            archetype: "Демо-режим",
-            summary: "Это демонстрационные данные. Пройдите тест или диалог с AI для получения реального результата.",
+            archetype: t('results.demoMode'),
+            summary: t('results.demoDesc'),
             careers: ["Data Scientist", "Инженер", "Аналитик"],
             strengths: ["Логика", "Системность"]
         });
@@ -139,7 +141,7 @@ export const Results: React.FC = () => {
     if (!user || !result || chartData.length === 0 || savedRef.current) return;
     const state = location.state || {};
     const assessmentId = state.assessmentId || id || '';
-    const assessment = getAssessmentById(assessmentId);
+    const assessment = getAssessmentById(assessmentId, lang);
     if (!assessment) return;
 
     savedRef.current = true;
@@ -159,7 +161,7 @@ export const Results: React.FC = () => {
               <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-primary animate-spin mb-4"></div>
               <p className="text-slate-500 animate-pulse text-center">
                   ИИ анализирует ваши ответы...<br/>
-                  <span className="text-xs">Это может занять несколько секунд</span>
+                  <span className="text-xs">{t('results.analyzingSub')}</span>
               </p>
           </div>
       );
@@ -170,11 +172,11 @@ export const Results: React.FC = () => {
       {/* Breadcrumbs */}
       <div className="flex flex-col gap-2 mb-8">
         <div className="flex items-center gap-2 text-[#99b1c2] text-sm">
-          <Link to="/dashboard">Главная</Link>
+          <Link to="/dashboard">{t('home')}</Link>
           <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-          <Link to="/history">История</Link>
+          <Link to="/history">{t('history')}</Link>
           <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-          <span className="text-slate-900 dark:text-white">Результаты</span>
+          <span className="text-slate-900 dark:text-white">{t('results.title')}</span>
         </div>
         <h1 className="text-slate-900 dark:text-white text-3xl md:text-4xl font-black leading-tight tracking-[-0.033em]">
             {assessmentTitle}
@@ -202,7 +204,7 @@ export const Results: React.FC = () => {
           </div>
           {/* Right Content */}
           <div className="flex-1 p-6 lg:p-10 flex flex-col justify-center">
-            <h2 className="text-slate-500 dark:text-[#99b1c2] text-sm font-bold uppercase tracking-wider mb-2">Основной тип личности</h2>
+            <h2 className="text-slate-500 dark:text-[#99b1c2] text-sm font-bold uppercase tracking-wider mb-2">{t('results.mainType')}</h2>
             <h3 className="text-slate-900 dark:text-white text-3xl lg:text-5xl font-black leading-tight mb-4">
                 {result?.archetype}
             </h3>
@@ -212,11 +214,11 @@ export const Results: React.FC = () => {
             <div className="flex flex-wrap gap-4 items-center">
                 <Link to="/dashboard" className="flex items-center justify-center gap-2 rounded-xl h-12 px-6 bg-primary hover:bg-primary/90 transition-colors text-white font-bold shadow-[0_0_20px_rgba(46,135,194,0.3)]">
                     <span className="material-symbols-outlined">refresh</span>
-                    <span>Новый тест</span>
+                    <span>{t('newTest')}</span>
                 </Link>
                 <Link to="/dashboard" className="flex items-center justify-center gap-2 rounded-xl h-12 px-6 bg-slate-100 dark:bg-[#283843] hover:bg-slate-200 dark:hover:bg-[#344856] transition-colors text-slate-700 dark:text-white font-bold border border-slate-200 dark:border-[#3e5563]">
                     <span className="material-symbols-outlined">home</span>
-                    <span>На главную</span>
+                    <span>{t('toMain')}</span>
                 </Link>
                 {saved && (
                   <span className="flex items-center gap-1 text-emerald-500 text-sm font-medium">
@@ -229,7 +231,7 @@ export const Results: React.FC = () => {
               <div className="mt-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/50 text-sm flex items-center gap-3">
                 <span className="material-symbols-outlined text-amber-500">info</span>
                 <span className="text-amber-700 dark:text-amber-300">
-                  Результат не сохранён. <Link to="/register" className="text-primary font-medium hover:underline">Зарегистрируйтесь</Link>, чтобы вести историю прогресса.
+                  {t('results.notSaved')} <Link to="/register" className="text-primary font-medium hover:underline">{t('results.registerForHistory')}</Link>{t('results.toKeepHistory')}
                 </span>
               </div>
             )}
@@ -243,12 +245,12 @@ export const Results: React.FC = () => {
         <div className="lg:col-span-5 flex flex-col gap-6">
             <div className="bg-white dark:bg-[#1c262e] rounded-xl p-6 border border-slate-200 dark:border-[#283843]">
                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-slate-900 dark:text-white text-xl font-bold">Карта компетенций</h3>
+                    <h3 className="text-slate-900 dark:text-white text-xl font-bold">{t('results.competencyMap')}</h3>
                 </div>
                 {chartData.length > 0 ? (
                     <RadarChart data={chartData} />
                 ) : (
-                    <div className="h-[300px] flex items-center justify-center text-slate-400">Нет данных для графика</div>
+                    <div className="h-[300px] flex items-center justify-center text-slate-400">{t('results.noChartData')}</div>
                 )}
             </div>
 
@@ -259,7 +261,7 @@ export const Results: React.FC = () => {
                         <span className="material-symbols-outlined">lightbulb</span>
                     </div>
                     <div>
-                        <h4 className="text-slate-900 dark:text-white font-bold mb-1">Сильные стороны</h4>
+                        <h4 className="text-slate-900 dark:text-white font-bold mb-1">{t('results.strengths')}</h4>
                         <div className="flex flex-wrap gap-2 mt-2">
                             {result?.strengths?.map((str, i) => (
                                 <span key={i} className="px-2 py-1 bg-white dark:bg-[#283843] rounded text-sm text-slate-700 dark:text-slate-200 shadow-sm border border-slate-100 dark:border-slate-600">
@@ -275,7 +277,7 @@ export const Results: React.FC = () => {
         {/* Right Col: Traits */}
         <div className="lg:col-span-7 flex flex-col gap-6">
             <div className="flex justify-between items-end">
-                <h3 className="text-slate-900 dark:text-white text-2xl font-bold">Детальный анализ черт</h3>
+                <h3 className="text-slate-900 dark:text-white text-2xl font-bold">{t('results.detailAnalysis')}</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -293,7 +295,7 @@ export const Results: React.FC = () => {
             </div>
 
             <div className="mt-4">
-                <h3 className="text-slate-900 dark:text-white text-xl font-bold mb-4">Рекомендуемые направления</h3>
+                <h3 className="text-slate-900 dark:text-white text-xl font-bold mb-4">{t('results.recommended')}</h3>
                 <div className="bg-white dark:bg-[#1c262e] border border-slate-200 dark:border-[#283843] rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-[#283843]">
                     {result?.careers?.map((career, i) => (
                          <div key={i} className="p-5 flex gap-4 items-center hover:bg-slate-50 dark:hover:bg-[#232d36] transition-colors cursor-pointer">
@@ -302,7 +304,7 @@ export const Results: React.FC = () => {
                             </div>
                             <div className="flex-1">
                                 <h5 className="text-slate-900 dark:text-white font-bold text-lg">{career}</h5>
-                                <p className="text-slate-500 dark:text-[#99b1c2] text-sm">Рекомендовано AI на основе ваших ответов</p>
+                                <p className="text-slate-500 dark:text-[#99b1c2] text-sm">{t('results.recommendedByAi')}</p>
                             </div>
                              <span className="material-symbols-outlined text-slate-400">chevron_right</span>
                         </div>

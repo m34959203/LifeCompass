@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { getAllAssessments } from '../services/assessmentData';
+import { useTranslation } from '../i18n/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Landing: React.FC = () => {
-  const assessments = getAllAssessments();
+  const { t, lang, setLang } = useTranslation();
+  const assessments = getAllAssessments(lang);
   const { isAuthenticated } = useAuth();
 
   const scrollTo = (id: string) => {
@@ -23,9 +25,9 @@ export const Landing: React.FC = () => {
         </div>
         <div className="flex flex-1 justify-end gap-8">
           <div className="hidden md:flex items-center gap-9">
-            <button onClick={() => scrollTo('features')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">Абитуриентам</button>
-            <button onClick={() => scrollTo('how-it-works')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">Студентам</button>
-            <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">Вузам</button>
+            <button onClick={() => scrollTo('features')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">{t('landing.forApplicants')}</button>
+            <button onClick={() => scrollTo('how-it-works')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">{t('landing.forStudents')}</button>
+            <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">{t('landing.forUniversities')}</button>
           </div>
           {isAuthenticated ? (
             <Link to="/dashboard" className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-6 bg-primary hover:bg-primary/90 transition-colors text-white text-sm font-bold shadow-md shadow-primary/20">
@@ -47,28 +49,28 @@ export const Landing: React.FC = () => {
             <div className="flex flex-col gap-6 lg:w-1/2 text-left z-10">
                 <div className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1d2830] px-3 py-1 text-xs font-medium text-primary shadow-sm">
                     <span className="material-symbols-outlined text-sm">verified</span>
-                    <span>Университетский стандарт</span>
+                    <span>{t('landing.uniStandard')}</span>
                 </div>
                 <h1 className="text-4xl lg:text-6xl font-black leading-[1.1] tracking-[-0.033em]">
-                    Выбери профессию <br/> и построй карьеру <br/>
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-500">осознанно</span>
+                    {t('landing.heroTitle1')} <br/> {t('landing.heroTitle2')} <br/>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-500">{t('landing.heroTitle3')}</span>
                 </h1>
                 <p className="text-slate-500 text-lg font-normal leading-relaxed max-w-[540px]">
-                    Платформа диагностики для абитуриентов и студентов. Определи свои сильные стороны, выбери специальность и развивай Soft Skills с помощью ИИ.
+                    {t('landing.heroDesc')}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
                     <Link to="/dashboard" className="flex items-center justify-center rounded-xl h-12 px-8 bg-primary hover:bg-blue-600 transition-colors text-white text-base font-bold shadow-lg shadow-primary/30">
-                        <span>{isAuthenticated ? 'Перейти в кабинет' : 'Попробовать бесплатно'}</span>
+                        <span>{isAuthenticated ? t('landing.goToDashboard') : t('landing.tryFree')}</span>
                         <span className="material-symbols-outlined ml-2 text-sm">arrow_forward</span>
                     </Link>
                     {!isAuthenticated && (
                       <Link to="/register" className="flex items-center justify-center rounded-xl h-12 px-8 bg-white dark:bg-[#1d2830] border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-[#283843] transition-colors text-slate-900 dark:text-white text-base font-bold shadow-sm">
-                        <span>Зарегистрироваться</span>
+                        <span>{t('register')}</span>
                       </Link>
                     )}
                     {isAuthenticated && (
                       <button onClick={() => scrollTo('for-universities')} className="flex items-center justify-center rounded-xl h-12 px-8 bg-white dark:bg-[#1d2830] border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-colors text-slate-900 dark:text-white text-base font-bold shadow-sm">
-                        <span>Для учебных заведений</span>
+                        <span>{t('landing.forInstitutions')}</span>
                       </button>
                     )}
                 </div>
@@ -84,8 +86,8 @@ export const Landing: React.FC = () => {
                           { icon: 'psychology', color: 'from-purple-500 to-fuchsia-600', label: 'Big Five' },
                           { icon: 'work_history', color: 'from-blue-500 to-indigo-600', label: 'RIASEC' },
                           { icon: 'handshake', color: 'from-slate-500 to-slate-700', label: 'Soft Skills' },
-                          { icon: 'battery_alert', color: 'from-orange-500 to-red-500', label: 'Стресс' },
-                          { icon: 'diamond', color: 'from-emerald-500 to-teal-600', label: 'Ценности' },
+                          { icon: 'battery_alert', color: 'from-orange-500 to-red-500', label: t('landing.heroStress') },
+                          { icon: 'diamond', color: 'from-emerald-500 to-teal-600', label: t('landing.heroValues') },
                           { icon: 'smart_toy', color: 'from-primary to-blue-600', label: 'AI' },
                         ].map((item, i) => (
                           <div key={i} className="flex flex-col items-center gap-2 group">
@@ -102,8 +104,8 @@ export const Landing: React.FC = () => {
                             <span className="material-symbols-outlined">psychology_alt</span>
                         </div>
                         <div>
-                            <div className="text-sm font-bold">Карьерный навигатор</div>
-                            <div className="text-slate-500 text-xs">Анализ предрасположенностей к специальностям</div>
+                            <div className="text-sm font-bold">{t('landing.careerNav')}</div>
+                            <div className="text-slate-500 text-xs">{t('landing.careerNavDesc')}</div>
                         </div>
                     </div>
                 </div>
@@ -115,18 +117,18 @@ export const Landing: React.FC = () => {
       <section className="px-6 py-16 bg-white dark:bg-[#131b20] border-y border-slate-100 dark:border-[#283843]" id="features">
         <div className="max-w-[1200px] mx-auto">
           <div className="flex flex-col gap-4 mb-12 text-center items-center">
-            <h2 className="text-primary font-bold tracking-wider uppercase text-sm">Возможности</h2>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight max-w-[720px]">Всё для вашего профессионального роста</h1>
-            <p className="text-slate-500 text-base font-normal max-w-[600px]">Платформа сочетает научные методики с искусственным интеллектом для максимально точных результатов.</p>
+            <h2 className="text-primary font-bold tracking-wider uppercase text-sm">{t('landing.features')}</h2>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight max-w-[720px]">{t('landing.featuresTitle')}</h1>
+            <p className="text-slate-500 text-base font-normal max-w-[600px]">{t('landing.featuresDesc')}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: 'quiz', title: 'Структурированные тесты', desc: 'Классические психометрические методики (RIASEC, Big Five) с валидированными вопросами.', color: 'text-blue-500', bg: 'bg-blue-500/10' },
-              { icon: 'smart_toy', title: 'AI-диалоги', desc: 'Глубокие беседы с ИИ-психологом для оценки soft skills, стресса и мотивации.', color: 'text-purple-500', bg: 'bg-purple-500/10' },
-              { icon: 'analytics', title: 'Визуализация результатов', desc: 'Наглядные радарные диаграммы и детальный разбор каждой черты характера.', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-              { icon: 'history', title: 'История прогресса', desc: 'Все результаты сохраняются локально. Отслеживайте изменения со временем.', color: 'text-orange-500', bg: 'bg-orange-500/10' },
-              { icon: 'work', title: 'Карьерные рекомендации', desc: 'AI генерирует персональные рекомендации по карьерным направлениям.', color: 'text-primary', bg: 'bg-primary/10' },
-              { icon: 'lock', title: 'Приватность данных', desc: 'Все данные хранятся только на вашем устройстве. Никакой передачи третьим лицам.', color: 'text-red-500', bg: 'bg-red-500/10' },
+              { icon: 'quiz', title: t('landing.feat1Title'), desc: t('landing.feat1Desc'), color: 'text-blue-500', bg: 'bg-blue-500/10' },
+              { icon: 'smart_toy', title: t('landing.feat2Title'), desc: t('landing.feat2Desc'), color: 'text-purple-500', bg: 'bg-purple-500/10' },
+              { icon: 'analytics', title: t('landing.feat3Title'), desc: t('landing.feat3Desc'), color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+              { icon: 'history', title: t('landing.feat4Title'), desc: t('landing.feat4Desc'), color: 'text-orange-500', bg: 'bg-orange-500/10' },
+              { icon: 'work', title: t('landing.feat5Title'), desc: t('landing.feat5Desc'), color: 'text-primary', bg: 'bg-primary/10' },
+              { icon: 'lock', title: t('landing.feat6Title'), desc: t('landing.feat6Desc'), color: 'text-red-500', bg: 'bg-red-500/10' },
             ].map((item, i) => (
               <div key={i} className="group flex flex-col gap-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-background-light dark:bg-[#1d2830] p-6 hover:border-primary/50 hover:shadow-lg transition-all duration-300">
                 <div className={`w-12 h-12 rounded-lg ${item.bg} flex items-center justify-center ${item.color} group-hover:scale-110 transition-transform`}>
@@ -146,15 +148,15 @@ export const Landing: React.FC = () => {
       <section className="px-6 py-16 bg-background-light dark:bg-background-dark" id="how-it-works">
          <div className="max-w-[1200px] mx-auto text-center">
             <div className="flex flex-col gap-4 mb-12 items-center">
-                <h2 className="text-primary font-bold tracking-wider uppercase text-sm">Методология</h2>
-                <h1 className="text-3xl md:text-4xl font-black tracking-tight max-w-[720px]">От школьной скамьи до первой работы</h1>
-                <p className="text-slate-500 text-base font-normal max-w-[600px]">Комплексная оценка, которая помогает принять правильное решение при поступлении и во время учебы.</p>
+                <h2 className="text-primary font-bold tracking-wider uppercase text-sm">{t('landing.methodology')}</h2>
+                <h1 className="text-3xl md:text-4xl font-black tracking-tight max-w-[720px]">{t('landing.methodTitle')}</h1>
+                <p className="text-slate-500 text-base font-normal max-w-[600px]">{t('landing.methodDesc')}</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
                 {[
-                    { step: 1, title: "Профориентация", desc: "Тесты RIASEC для выбора факультета и специализации.", icon: "school", color: "text-primary", bg: "bg-primary/10" },
-                    { step: 2, title: "Soft Skills & Личность", desc: "Оценка Big Five и эмоционального интеллекта для развития надпрофессиональных навыков.", icon: "group", color: "text-purple-500", bg: "bg-purple-500/10" },
-                    { step: 3, title: "Карьерный трек", desc: "ИИ строит индивидуальный план развития и рекомендует стажировки.", icon: "timeline", color: "text-emerald-500", bg: "bg-emerald-500/10" }
+                    { step: 1, title: t('landing.step1Title'), desc: t('landing.step1Desc'), icon: "school", color: "text-primary", bg: "bg-primary/10" },
+                    { step: 2, title: t('landing.step2Title'), desc: t('landing.step2Desc'), icon: "group", color: "text-purple-500", bg: "bg-purple-500/10" },
+                    { step: 3, title: t('landing.step3Title'), desc: t('landing.step3Desc'), icon: "timeline", color: "text-emerald-500", bg: "bg-emerald-500/10" }
                 ].map((item) => (
                     <div key={item.step} className="group relative flex flex-col gap-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1d2830] p-6 hover:border-primary/50 hover:shadow-lg transition-all duration-300">
                         <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white dark:bg-[#28323a] border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 font-bold text-sm shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{item.step}</div>
@@ -175,9 +177,9 @@ export const Landing: React.FC = () => {
       <section className="px-6 py-16 bg-white dark:bg-[#131b20] border-y border-slate-100 dark:border-[#283843]" id="assessments">
         <div className="max-w-[1200px] mx-auto text-center">
           <div className="flex flex-col gap-4 mb-12 items-center">
-            <h2 className="text-primary font-bold tracking-wider uppercase text-sm">Методики</h2>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight max-w-[720px]">7 проверенных методик</h1>
-            <p className="text-slate-500 text-base font-normal max-w-[600px]">Каждая методика направлена на раскрытие определённого аспекта вашей личности.</p>
+            <h2 className="text-primary font-bold tracking-wider uppercase text-sm">{t('landing.methods')}</h2>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight max-w-[720px]">{t('landing.methodsTitle')}</h1>
+            <p className="text-slate-500 text-base font-normal max-w-[600px]">{t('landing.methodsDesc')}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
             {assessments.map((item, i) => (
@@ -187,14 +189,14 @@ export const Landing: React.FC = () => {
                     <span className="material-symbols-outlined text-xl">{item.icon}</span>
                   </div>
                   <div className="absolute top-3 right-3 bg-black/20 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border border-white/10">
-                    {item.type === 'chat' ? 'AI Диалог' : 'Тест'}
+                    {item.type === 'chat' ? t('aiDialog') : t('test')}
                   </div>
                 </div>
                 <div className="p-5">
                   <h3 className="text-base font-bold mb-1">{item.title}</h3>
                   <p className="text-slate-500 text-sm leading-relaxed mb-3">{item.description}</p>
                   <div className="flex items-center gap-1 text-primary text-xs font-medium">
-                    <span>{item.type === 'chat' ? 'Начать беседу' : `${item.questions?.length} вопросов`}</span>
+                    <span>{item.type === 'chat' ? t('startChat') : `${item.questions?.length} ${t('questions')}`}</span>
                     <span className="material-symbols-outlined text-sm">arrow_forward</span>
                   </div>
                 </div>
@@ -220,32 +222,32 @@ export const Landing: React.FC = () => {
                     <span className="material-symbols-outlined text-2xl text-primary">school</span>
                     <h3 className="text-lg font-bold">LifeCompass Uni</h3>
                 </div>
-                <p className="text-slate-500 text-sm leading-relaxed">Система поддержки принятия карьерных решений для абитуриентов и студентов.</p>
+                <p className="text-slate-500 text-sm leading-relaxed">{t('landing.systemDesc')}</p>
             </div>
             <div className="flex flex-col gap-3">
-                <h4 className="font-bold text-sm">Студентам</h4>
-                <Link to="/dashboard" className="text-slate-500 hover:text-primary text-sm transition-colors">Все тесты</Link>
-                <button onClick={() => scrollTo('assessments')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">Методики</button>
-                <button onClick={() => scrollTo('how-it-works')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">Как это работает</button>
+                <h4 className="font-bold text-sm">{t('landing.forStudents')}</h4>
+                <Link to="/dashboard" className="text-slate-500 hover:text-primary text-sm transition-colors">{t('landing.allTests')}</Link>
+                <button onClick={() => scrollTo('assessments')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">{t('landing.methods')}</button>
+                <button onClick={() => scrollTo('how-it-works')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">{t('landing.howItWorks')}</button>
             </div>
             <div className="flex flex-col gap-3">
-                <h4 className="font-bold text-sm">Университетам</h4>
-                <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">О платформе</button>
-                <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">Тарифы</button>
-                <a href="mailto:contact@lifecompass.uni" className="text-slate-500 hover:text-primary text-sm transition-colors">Связаться</a>
+                <h4 className="font-bold text-sm">{t('landing.forUniversities')}</h4>
+                <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">{t('landing.about')}</button>
+                <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">{t('landing.pricing')}</button>
+                <a href="mailto:contact@lifecompass.uni" className="text-slate-500 hover:text-primary text-sm transition-colors">{t('landing.contact')}</a>
             </div>
             <div className="flex flex-col gap-3">
-                <h4 className="font-bold text-sm">Продукт</h4>
-                <Link to={isAuthenticated ? '/profile' : '/login'} className="text-slate-500 hover:text-primary text-sm transition-colors">Профиль</Link>
-                <Link to={isAuthenticated ? '/history' : '/login'} className="text-slate-500 hover:text-primary text-sm transition-colors">История тестов</Link>
-                <button onClick={() => scrollTo('features')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">Возможности</button>
+                <h4 className="font-bold text-sm">{t('landing.product')}</h4>
+                <Link to={isAuthenticated ? '/profile' : '/login'} className="text-slate-500 hover:text-primary text-sm transition-colors">{t('profile')}</Link>
+                <Link to={isAuthenticated ? '/history' : '/login'} className="text-slate-500 hover:text-primary text-sm transition-colors">{t('landing.historyTests')}</Link>
+                <button onClick={() => scrollTo('features')} className="text-slate-500 hover:text-primary text-sm transition-colors text-left">{t('landing.features')}</button>
             </div>
           </div>
           <div className="border-t border-slate-200 dark:border-[#283843] pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-slate-400 text-xs">LifeCompass Uni. Все данные хранятся локально на вашем устройстве.</p>
+            <p className="text-slate-400 text-xs">{t('landing.footer')}</p>
             <div className="flex items-center gap-4 text-xs text-slate-400">
-              <span>Казахстан</span>
-              <span>RU</span>
+              <span>{t('landing.country')}</span>
+              <button onClick={() => setLang(lang === 'ru' ? 'kk' : 'ru')} className="hover:text-primary transition-colors cursor-pointer">{lang === 'ru' ? 'RU' : 'ҚАЗ'}</button>
             </div>
           </div>
         </div>

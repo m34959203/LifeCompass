@@ -3,14 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getHistory, deleteResult, HistoryEntry } from '../services/historyService';
 import { getAllAssessments } from '../services/assessmentData';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const History: React.FC = () => {
   const { user } = useAuth();
+  const { t, lang } = useTranslation();
   const navigate = useNavigate();
   const [history, setHistory] = useState<HistoryEntry[]>(() =>
     user ? getHistory(user.id) : []
   );
-  const assessments = getAllAssessments();
+  const assessments = getAllAssessments(lang);
 
   const handleDelete = (entryId: string) => {
     if (!user) return;
@@ -56,8 +58,8 @@ export const History: React.FC = () => {
           </h1>
           <p className="text-slate-500 dark:text-[#99b1c2] text-base font-normal max-w-2xl">
             {history.length > 0
-              ? `${history.length} пройденных тестов. Отслеживайте свой прогресс.`
-              : 'Пройдите тесты, чтобы начать отслеживать свой прогресс.'}
+              ? t('history.countDesc', { count: history.length })
+              : t('history.emptyDesc')}
           </p>
         </div>
         <Link
@@ -102,7 +104,7 @@ export const History: React.FC = () => {
                         {entry.result.archetype}
                       </span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${entry.type === 'chat' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}>
-                        {entry.type === 'chat' ? 'AI Диалог' : 'Тест'}
+                        {entry.type === 'chat' ? t('aiDialog') : t('test')}
                       </span>
                     </div>
                   </div>
@@ -156,7 +158,7 @@ export const History: React.FC = () => {
       )}
 
       {/* Available assessments grid */}
-      <h3 className="text-slate-900 dark:text-white text-xl font-bold mb-4">Доступные методики</h3>
+      <h3 className="text-slate-900 dark:text-white text-xl font-bold mb-4">{t('history.availableMethods')}</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {assessments.map((assessment) => (
           <Link
@@ -173,7 +175,7 @@ export const History: React.FC = () => {
                   {assessment.title}
                 </h4>
                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {assessment.type === 'chat' ? 'AI Диалог' : 'Тест'}
+                  {assessment.type === 'chat' ? t('aiDialog') : t('test')}
                 </span>
               </div>
             </div>
@@ -181,7 +183,7 @@ export const History: React.FC = () => {
               {assessment.description}
             </p>
             <div className="flex items-center gap-1 text-primary text-xs font-medium mt-auto">
-              <span>Пройти</span>
+              <span>{t('take')}</span>
               <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
             </div>
           </Link>

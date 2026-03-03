@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { getAllAssessments } from '../services/assessmentData';
+import { useTranslation } from '../i18n/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Dashboard: React.FC = () => {
-  const assessments = getAllAssessments();
+  const { t, lang } = useTranslation();
+  const assessments = getAllAssessments(lang);
   const { isAuthenticated } = useAuth();
 
   return (
@@ -15,8 +17,8 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-center gap-3 flex-1">
             <span className="material-symbols-outlined text-primary text-2xl">person_add</span>
             <div>
-              <p className="text-sm font-bold text-slate-900 dark:text-white">Вы в гостевом режиме</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Тесты доступны, но результаты не сохраняются. Зарегистрируйтесь для ведения истории.</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">{t('dashboard.guestMode')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('dashboard.guestDesc')}</p>
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -37,7 +39,7 @@ export const Dashboard: React.FC = () => {
              LifeCompass Uni
           </h1>
           <p className="mt-2 text-lg text-slate-600 dark:text-slate-400 max-w-2xl">
-            Гибридная платформа диагностики. Выбирайте между точными тестами и глубоким диалогом с ИИ.
+            {t('dashboard.subtitle')}
           </p>
         </div>
       </header>
@@ -46,7 +48,7 @@ export const Dashboard: React.FC = () => {
       <section className="mb-10">
         <h2 className="mb-6 text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <span className="material-symbols-outlined text-primary">analytics</span>
-            Доступные методики
+            {t('dashboard.available')}
         </h2>
         
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -61,7 +63,7 @@ export const Dashboard: React.FC = () => {
                  </div>
                  {/* Type Badge */}
                  <div className="absolute top-4 right-4 bg-black/20 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border border-white/10">
-                    {test.type === 'chat' ? 'AI Диалог' : 'Тест'}
+                    {test.type === 'chat' ? t('aiDialog') : t('test')}
                  </div>
               </div>
 
@@ -76,12 +78,12 @@ export const Dashboard: React.FC = () => {
                   {test.type === 'quiz' && test.questions && (
                     <span className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm">help_outline</span>
-                      {test.questions.length} вопросов
+                      {test.questions.length} {t('questions')}
                     </span>
                   )}
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-sm">schedule</span>
-                    {test.type === 'chat' ? '~10 мин' : `~${Math.ceil((test.questions?.length || 10) * 0.4)} мин`}
+                    {test.type === 'chat' ? `~10 ${t('min')}` : `~${Math.ceil((test.questions?.length || 10) * 0.4)} ${t('min')}`}
                   </span>
                 </div>
 
@@ -92,7 +94,7 @@ export const Dashboard: React.FC = () => {
                     <span className="material-symbols-outlined text-lg">
                         {test.type === 'chat' ? 'forum' : 'play_arrow'}
                     </span>
-                    {test.type === 'chat' ? 'Начать беседу' : 'Пройти тест'}
+                    {test.type === 'chat' ? t('startChat') : t('takeTest')}
                 </Link>
               </div>
             </div>
