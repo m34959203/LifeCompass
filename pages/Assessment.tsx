@@ -70,6 +70,7 @@ export const Assessment: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const voiceEnabledRef = useRef(true);
+  const isSpeakingRef = useRef(false);
 
   // -- LIVE API REFS --
   const liveSessionRef = useRef<any>(null);
@@ -100,8 +101,9 @@ export const Assessment: React.FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
 
-  // Keep ref in sync with state
+  // Keep refs in sync with state
   useEffect(() => { voiceEnabledRef.current = voiceEnabled; }, [voiceEnabled]);
+  useEffect(() => { isSpeakingRef.current = isSpeaking; }, [isSpeaking]);
 
   // -- STOP LIVE SESSION --
   const stopLiveSession = useCallback(() => {
@@ -189,8 +191,8 @@ export const Assessment: React.FC = () => {
             const scriptProcessor = inputAudioCtxRef.current!.createScriptProcessor(4096, 1, 1);
 
             scriptProcessor.onaudioprocess = (e) => {
-              // Don't send mic audio until greeting is complete, or if voice is disabled
-              if (!isGreetingCompleteRef.current || !voiceEnabledRef.current) return;
+              // Don't send mic audio until greeting is complete, while AI speaks, or if voice is disabled
+              if (!isGreetingCompleteRef.current || !voiceEnabledRef.current || isSpeakingRef.current) return;
 
               const inputData = e.inputBuffer.getChannelData(0);
               const pcmBlob = createPcmBlob(inputData);
@@ -255,14 +257,6 @@ export const Assessment: React.FC = () => {
               audioSource.start(nextStartTimeRef.current);
               nextStartTimeRef.current += audioBuffer.duration;
               sourcesRef.current.add(audioSource);
-            }
-
-            // Handle interruption
-            if (message.serverContent?.interrupted) {
-              sourcesRef.current.forEach(s => { try { s.stop(); } catch {} });
-              sourcesRef.current.clear();
-              nextStartTimeRef.current = 0;
-              setIsSpeaking(false);
             }
 
             // Handle turn complete
@@ -575,15 +569,10 @@ export const Assessment: React.FC = () => {
               )}
 
               <button
-                onClick={() => {
-                  if (isSpeaking) {
-                    stopSpeaking();
-                  }
-                }}
                 disabled={!!apiError || isTyping}
                 className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl ${
                   isSpeaking
-                    ? 'bg-purple-600 text-white shadow-purple-500/30 hover:scale-105 active:scale-95'
+                    ? 'bg-purple-600 text-white shadow-purple-500/30'
                     : isRecording && voiceEnabled
                       ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-green-500/30'
                       : isTyping
