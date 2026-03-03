@@ -63,6 +63,7 @@ export const Results: React.FC = () => {
   const [assessmentTitle, setAssessmentTitle] = useState(t('results.title'));
   const [saved, setSaved] = useState(false);
   const [isCareerType, setIsCareerType] = useState(true);
+  const [isStateType, setIsStateType] = useState(false);
   const savedRef = useRef(false);
 
   useEffect(() => {
@@ -75,6 +76,8 @@ export const Results: React.FC = () => {
             setAssessmentTitle(assessment.title);
             const careerIds = ['career-riasec', 'soft-skills-360', 'values-motivation'];
             setIsCareerType(careerIds.includes(assessment.id));
+            const stateIds = ['health-stress', 'emotional-intelligence'];
+            setIsStateType(stateIds.includes(assessment.id));
         }
 
         // --- PATH 0: FROM HISTORY (pre-computed) ---
@@ -236,17 +239,17 @@ export const Results: React.FC = () => {
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
                 <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-symbols-outlined text-5xl text-primary">psychology</span>
+                  <span className="material-symbols-outlined text-5xl text-primary">{isStateType ? 'monitor_heart' : 'psychology'}</span>
                 </div>
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase tracking-wider border border-primary/30">
-                  {t('results.archetype')}
+                  {isStateType ? t('results.condition') : t('results.archetype')}
                 </span>
               </div>
             </div>
           </div>
           {/* Right Content */}
           <div className="flex-1 p-6 lg:p-10 flex flex-col justify-center">
-            <h2 className="text-slate-500 dark:text-[#99b1c2] text-sm font-bold uppercase tracking-wider mb-2">{t('results.mainType')}</h2>
+            <h2 className="text-slate-500 dark:text-[#99b1c2] text-sm font-bold uppercase tracking-wider mb-2">{isStateType ? t('results.currentState') : t('results.mainType')}</h2>
             <h3 className="text-slate-900 dark:text-white text-3xl lg:text-5xl font-black leading-tight mb-4">
                 {result?.archetype}
             </h3>
@@ -287,7 +290,7 @@ export const Results: React.FC = () => {
         <div className="lg:col-span-5 flex flex-col gap-6">
             <div className="bg-white dark:bg-[#1c262e] rounded-xl p-6 border border-slate-200 dark:border-[#283843]">
                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-slate-900 dark:text-white text-xl font-bold">{t('results.competencyMap')}</h3>
+                    <h3 className="text-slate-900 dark:text-white text-xl font-bold">{isStateType ? t('results.indicatorsMap') : t('results.competencyMap')}</h3>
                 </div>
                 {chartData.length > 0 ? (
                     <RadarChart data={chartData} />
@@ -303,7 +306,7 @@ export const Results: React.FC = () => {
                         <span className="material-symbols-outlined">lightbulb</span>
                     </div>
                     <div>
-                        <h4 className="text-slate-900 dark:text-white font-bold mb-1">{t('results.strengths')}</h4>
+                        <h4 className="text-slate-900 dark:text-white font-bold mb-1">{isStateType ? t('results.resources') : t('results.strengths')}</h4>
                         <div className="flex flex-wrap gap-2 mt-2">
                             {result?.strengths?.map((str, i) => (
                                 <span key={i} className="px-2 py-1 bg-white dark:bg-[#283843] rounded text-sm text-slate-700 dark:text-slate-200 shadow-sm border border-slate-100 dark:border-slate-600">
@@ -319,7 +322,7 @@ export const Results: React.FC = () => {
         {/* Right Col: Traits */}
         <div className="lg:col-span-7 flex flex-col gap-6">
             <div className="flex justify-between items-end">
-                <h3 className="text-slate-900 dark:text-white text-2xl font-bold">{t('results.detailAnalysis')}</h3>
+                <h3 className="text-slate-900 dark:text-white text-2xl font-bold">{isStateType ? t('results.detailIndicators') : t('results.detailAnalysis')}</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

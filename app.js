@@ -349,7 +349,7 @@ app.post('/api/analyze/chat', async (req, res) => {
       .map((m) => `${m.role === 'user' ? 'User' : 'AI Mentor'}: ${m.text}`)
       .join('\n');
 
-    const careerKeywords = ['RIASEC', 'профориентация', 'Soft Skills', 'кейс', 'карьерн', 'ценност'];
+    const careerKeywords = ['RIASEC', 'профориентация', 'Soft Skills', 'кейс', 'карьерн', 'ценност', 'мансап', 'құндылық', 'кәсіби бағдар'];
     const isCareer = careerKeywords.some(kw => assessmentTitle.toLowerCase().includes(kw.toLowerCase()));
 
     const careersInstruction = isCareer
