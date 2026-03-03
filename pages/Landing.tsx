@@ -29,17 +29,26 @@ export const Landing: React.FC = () => {
             <button onClick={() => scrollTo('how-it-works')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">{t('landing.forStudents')}</button>
             <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">{t('landing.forUniversities')}</button>
           </div>
-          {isAuthenticated ? (
-            <Link to="/dashboard" className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-6 bg-primary hover:bg-primary/90 transition-colors text-white text-sm font-bold shadow-md shadow-primary/20">
-              Личный кабинет
-            </Link>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Link to="/login" className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-6 bg-primary hover:bg-primary/90 transition-colors text-white text-sm font-bold shadow-md shadow-primary/20">
-                Войти
+          <div className="flex items-center gap-3">
+            {/* Language Switcher */}
+            <button
+              onClick={() => setLang(lang === 'ru' ? 'kk' : 'ru')}
+              className="flex items-center gap-1 h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#283843] text-sm font-medium transition-colors"
+            >
+              <span className="material-symbols-outlined text-base">translate</span>
+              <span>{lang === 'ru' ? 'ҚАЗ' : 'RU'}</span>
+            </button>
+
+            {isAuthenticated ? (
+              <Link to="/dashboard" className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-6 bg-primary hover:bg-primary/90 transition-colors text-white text-sm font-bold shadow-md shadow-primary/20">
+                {t('landing.dashboard')}
               </Link>
-            </div>
-          )}
+            ) : (
+              <Link to="/login" className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-6 bg-primary hover:bg-primary/90 transition-colors text-white text-sm font-bold shadow-md shadow-primary/20">
+                {t('login')}
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
