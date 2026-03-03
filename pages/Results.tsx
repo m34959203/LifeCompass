@@ -261,7 +261,7 @@ export const Results: React.FC = () => {
                     <div>
                         <h4 className="text-slate-900 dark:text-white font-bold mb-1">Сильные стороны</h4>
                         <div className="flex flex-wrap gap-2 mt-2">
-                            {result?.strengths.map((str, i) => (
+                            {result?.strengths?.map((str, i) => (
                                 <span key={i} className="px-2 py-1 bg-white dark:bg-[#283843] rounded text-sm text-slate-700 dark:text-slate-200 shadow-sm border border-slate-100 dark:border-slate-600">
                                     {str}
                                 </span>
@@ -295,7 +295,7 @@ export const Results: React.FC = () => {
             <div className="mt-4">
                 <h3 className="text-slate-900 dark:text-white text-xl font-bold mb-4">Рекомендуемые направления</h3>
                 <div className="bg-white dark:bg-[#1c262e] border border-slate-200 dark:border-[#283843] rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-[#283843]">
-                    {result?.careers.map((career, i) => (
+                    {result?.careers?.map((career, i) => (
                          <div key={i} className="p-5 flex gap-4 items-center hover:bg-slate-50 dark:hover:bg-[#232d36] transition-colors cursor-pointer">
                             <div className={`size-12 rounded-lg ${['bg-blue-500/10 text-blue-500', 'bg-purple-500/10 text-purple-500', 'bg-orange-500/10 text-orange-500'][i % 3]} flex items-center justify-center shrink-0`}>
                                 <span className="material-symbols-outlined">work</span>
