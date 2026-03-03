@@ -2,6 +2,17 @@ import { Message } from '../types';
 
 let currentSessionId: string | null = null;
 
+/** Get API key for client-side Gemini Live API */
+export const getLiveApiKey = async (): Promise<{ apiKey: string } | null> => {
+  try {
+    const res = await fetch('/api/live-config');
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+};
+
 /** Check if the Gemini API is configured on the server */
 export const isApiConfigured = async (): Promise<boolean> => {
   try {

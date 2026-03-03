@@ -1,36 +1,57 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { startChatSession, sendMessageToAI, sendVoiceMessageToAI, textToSpeech, isApiConfigured } from '../services/geminiService';
+import { startChatSession, sendMessageToAI, isApiConfigured, getLiveApiKey } from '../services/geminiService';
 import { getAssessmentById } from '../services/assessmentData';
 import { AssessmentConfig, Message, Answer } from '../types';
-
 import { PsychologistAvatar } from '../components/PsychologistAvatar';
+import { GoogleGenAI, Modality } from '@google/genai';
 
-// Web Speech API types
-interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList;
-  resultIndex: number;
-}
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-}
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start(): void;
-  stop(): void;
-  abort(): void;
-  onresult: ((e: SpeechRecognitionEvent) => void) | null;
-  onerror: ((e: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-  onstart: (() => void) | null;
-}
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => SpeechRecognition;
-    webkitSpeechRecognition?: new () => SpeechRecognition;
+// --- Audio helpers (PCM encoding/decoding for Gemini Live API) ---
+
+function encodeBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
   }
+  return btoa(binary);
+}
+
+function decodeBase64(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function decodeAudioData(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number,
+  numChannels: number,
+): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
+  }
+  return buffer;
+}
+
+function createPcmBlob(data: Float32Array): { data: string; mimeType: string } {
+  const int16 = new Int16Array(data.length);
+  for (let i = 0; i < data.length; i++) {
+    int16[i] = data[i] * 32768;
+  }
+  return {
+    data: encodeBase64(new Uint8Array(int16.buffer)),
+    mimeType: 'audio/pcm;rate=16000',
+  };
 }
 
 export const Assessment: React.FC = () => {
@@ -48,16 +69,28 @@ export const Assessment: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const initSpoken = useRef(false);
+  const voiceEnabledRef = useRef(true);
 
-  const hasSpeechRecognition = typeof window !== 'undefined' &&
-    !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  // -- LIVE API REFS --
+  const liveSessionRef = useRef<any>(null);
+  const liveSessionPromiseRef = useRef<Promise<any> | null>(null);
+  const inputAudioCtxRef = useRef<AudioContext | null>(null);
+  const outputAudioCtxRef = useRef<AudioContext | null>(null);
+  const nextStartTimeRef = useRef(0);
+  const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
+  const isGreetingCompleteRef = useRef(false);
+  const liveInitRef = useRef(false);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Transcription accumulators
+  const userTranscriptRef = useRef('');
+  const aiTranscriptRef = useRef('');
+  const [aiDisplayText, setAiDisplayText] = useState('');
 
   // -- AVATAR STATE --
   const avatarState = useMemo(() => {
-    if (isRecording) return 'listen' as const;
     if (isSpeaking) return 'speak' as const;
+    if (isRecording) return 'listen' as const;
     if (isTyping) return 'think' as const;
     if (inputValue.trim()) return 'listen' as const;
     return 'idle' as const;
@@ -67,228 +100,305 @@ export const Assessment: React.FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
 
-  // Init
-  useEffect(() => {
-    const init = async () => {
-      if (id) {
-        const data = getAssessmentById(id);
-        if (data) {
-          setAssessment(data);
+  // Keep ref in sync with state
+  useEffect(() => { voiceEnabledRef.current = voiceEnabled; }, [voiceEnabled]);
 
-          if (data.type === 'chat') {
-            const configured = await isApiConfigured();
-            if (!configured) {
-              setApiError('AI-сервис недоступен. GEMINI_API_KEY не настроен на сервере.');
-              if (data.initialMessage) {
-                setMessages([{
-                  id: 'init-1',
-                  role: 'model',
-                  text: data.initialMessage,
-                  timestamp: new Date()
-                }]);
-              }
-              return;
-            }
-
-            try {
-              await startChatSession('gemini-2.0-flash', data.systemInstruction || '');
-              if (data.initialMessage) {
-                setMessages([{
-                  id: 'init-1',
-                  role: 'model',
-                  text: data.initialMessage,
-                  timestamp: new Date()
-                }]);
-              }
-            } catch (e: any) {
-              console.error(e);
-              if (e?.message === 'API_KEY_MISSING') {
-                setApiError('AI-сервис недоступен. GEMINI_API_KEY не настроен на сервере.');
-              } else {
-                setApiError('Не удалось подключиться к AI. Проверьте интернет-соединение.');
-              }
-              if (data.initialMessage) {
-                setMessages([{
-                  id: 'init-1',
-                  role: 'model',
-                  text: data.initialMessage,
-                  timestamp: new Date()
-                }]);
-              }
-            }
-          }
-        }
-      }
-    };
-    init();
-  }, [id]);
-
-  // -- AUDIO PLAYBACK --
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const playAudio = useCallback((base64Audio: string, mimeType: string) => {
-    // Stop any current playback
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+  // -- STOP LIVE SESSION --
+  const stopLiveSession = useCallback(() => {
+    if (liveSessionRef.current) {
+      try { liveSessionRef.current.close(); } catch {}
+      liveSessionRef.current = null;
     }
-
-    setIsSpeaking(true);
-    const audio = new Audio(`data:${mimeType};base64,${base64Audio}`);
-    audioRef.current = audio;
-    audio.onended = () => {
-      setIsSpeaking(false);
-      audioRef.current = null;
-    };
-    audio.onerror = () => {
-      console.error('Audio playback error');
-      setIsSpeaking(false);
-      audioRef.current = null;
-    };
-    audio.play().catch(err => {
-      console.error('Audio play failed:', err);
-      setIsSpeaking(false);
-    });
-  }, []);
-
-  const stopSpeaking = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+    liveSessionPromiseRef.current = null;
+    if (inputAudioCtxRef.current) {
+      try { inputAudioCtxRef.current.close(); } catch {}
+      inputAudioCtxRef.current = null;
     }
+    if (outputAudioCtxRef.current) {
+      try { outputAudioCtxRef.current.close(); } catch {}
+      outputAudioCtxRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    sourcesRef.current.forEach(s => { try { s.stop(); } catch {} });
+    sourcesRef.current.clear();
+    nextStartTimeRef.current = 0;
+    setIsRecording(false);
     setIsSpeaking(false);
   }, []);
 
-  // -- SPEAK INITIAL MESSAGE --
-  useEffect(() => {
-    if (!assessment || assessment.type !== 'chat' || !assessment.initialMessage) return;
-    if (initSpoken.current || apiError || !voiceEnabled) return;
-    if (messages.length === 0) return; // wait until messages are set
+  // -- STOP AI AUDIO (interrupt) --
+  const stopSpeaking = useCallback(() => {
+    sourcesRef.current.forEach(s => { try { s.stop(); } catch {} });
+    sourcesRef.current.clear();
+    nextStartTimeRef.current = 0;
+    setIsSpeaking(false);
+  }, []);
 
-    initSpoken.current = true;
-    // Show speaking state immediately while TTS loads
-    setIsSpeaking(true);
-    textToSpeech(assessment.initialMessage).then(({ audio, mimeType }) => {
-      if (audio) {
-        playAudio(audio, mimeType);
-      } else {
-        setIsSpeaking(false);
+  // -- START LIVE SESSION --
+  const startLiveSession = useCallback(async (assessmentConfig: AssessmentConfig) => {
+    if (liveInitRef.current) return;
+    liveInitRef.current = true;
+
+    try {
+      setIsTyping(true);
+      setApiError(null);
+
+      const config = await getLiveApiKey();
+      if (!config?.apiKey) {
+        setApiError('AI-сервис недоступен. GEMINI_API_KEY не настроен на сервере.');
+        setIsTyping(false);
+        return;
       }
-    }).catch(() => {
-      setIsSpeaking(false);
-    });
-  }, [assessment, messages, apiError, voiceEnabled, playAudio]);
 
-  // -- CHAT HANDLERS --
+      // Request microphone access
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        streamRef.current = stream;
+      } catch (mediaError: any) {
+        if (mediaError.name === 'NotFoundError' || mediaError.name === 'DevicesNotFoundError') {
+          setApiError('Микрофон не найден. Подключите устройство.');
+        } else if (mediaError.name === 'NotAllowedError' || mediaError.name === 'PermissionDeniedError') {
+          setApiError('Доступ к микрофону отклонен.');
+        } else {
+          setApiError('Не удалось получить доступ к микрофону.');
+        }
+        setIsTyping(false);
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey: config.apiKey });
+
+      inputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+      outputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+
+      isGreetingCompleteRef.current = false;
+
+      const sessionPromise = ai.live.connect({
+        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        callbacks: {
+          onopen: () => {
+            setIsTyping(false);
+            setIsRecording(true);
+
+            // Set up mic capture
+            const source = inputAudioCtxRef.current!.createMediaStreamSource(stream);
+            const scriptProcessor = inputAudioCtxRef.current!.createScriptProcessor(4096, 1, 1);
+
+            scriptProcessor.onaudioprocess = (e) => {
+              // Don't send mic audio until greeting is complete, or if voice is disabled
+              if (!isGreetingCompleteRef.current || !voiceEnabledRef.current) return;
+
+              const inputData = e.inputBuffer.getChannelData(0);
+              const pcmBlob = createPcmBlob(inputData);
+              if (liveSessionRef.current) {
+                liveSessionRef.current.sendRealtimeInput({ media: pcmBlob });
+              }
+            };
+
+            source.connect(scriptProcessor);
+            scriptProcessor.connect(inputAudioCtxRef.current!.destination);
+
+            // Send initial greeting trigger
+            const greetingPrompt = assessmentConfig.initialMessage
+              ? `Начни разговор. Поприветствуй пользователя и скажи следующее: ${assessmentConfig.initialMessage}`
+              : 'Поприветствуй пользователя и представься.';
+
+            liveSessionPromiseRef.current!.then((session: any) => {
+              session.sendClientContent({
+                turns: [{
+                  role: 'user',
+                  parts: [{ text: greetingPrompt }]
+                }],
+                turnComplete: true
+              });
+            });
+          },
+
+          onmessage: async (message: any) => {
+            // Handle user speech transcription
+            if (message.serverContent?.inputTranscription) {
+              const text = message.serverContent.inputTranscription.text;
+              userTranscriptRef.current = text;
+              setInputValue(text);
+            }
+
+            // Handle AI speech transcription
+            if (message.serverContent?.outputTranscription) {
+              const text = message.serverContent.outputTranscription.text;
+              aiTranscriptRef.current = (aiTranscriptRef.current + ' ' + text).trim();
+              setAiDisplayText(prev => (prev.length > 200 ? prev.slice(-200) : prev) + ' ' + text);
+            }
+
+            // Handle audio data
+            if (message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data) {
+              setIsSpeaking(true);
+              const base64Audio = message.serverContent.modelTurn.parts[0].inlineData.data;
+              const ctx = outputAudioCtxRef.current!;
+
+              nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
+              const audioBuffer = await decodeAudioData(decodeBase64(base64Audio), ctx, 24000, 1);
+
+              const audioSource = ctx.createBufferSource();
+              audioSource.buffer = audioBuffer;
+              audioSource.connect(ctx.destination);
+              audioSource.addEventListener('ended', () => {
+                sourcesRef.current.delete(audioSource);
+                if (sourcesRef.current.size === 0) {
+                  setIsSpeaking(false);
+                }
+              });
+
+              audioSource.start(nextStartTimeRef.current);
+              nextStartTimeRef.current += audioBuffer.duration;
+              sourcesRef.current.add(audioSource);
+            }
+
+            // Handle interruption
+            if (message.serverContent?.interrupted) {
+              sourcesRef.current.forEach(s => { try { s.stop(); } catch {} });
+              sourcesRef.current.clear();
+              nextStartTimeRef.current = 0;
+              setIsSpeaking(false);
+            }
+
+            // Handle turn complete
+            if (message.serverContent?.turnComplete) {
+              // Enable mic after greeting
+              if (!isGreetingCompleteRef.current) {
+                isGreetingCompleteRef.current = true;
+              }
+
+              // Save messages for later analysis
+              if (userTranscriptRef.current.trim()) {
+                setMessages(prev => [...prev, {
+                  id: Date.now().toString(),
+                  role: 'user',
+                  text: userTranscriptRef.current.trim(),
+                  timestamp: new Date()
+                }]);
+              }
+              if (aiTranscriptRef.current.trim()) {
+                setMessages(prev => [...prev, {
+                  id: (Date.now() + 1).toString(),
+                  role: 'model',
+                  text: aiTranscriptRef.current.trim(),
+                  timestamp: new Date()
+                }]);
+              }
+
+              userTranscriptRef.current = '';
+              aiTranscriptRef.current = '';
+              setInputValue('');
+              setAiDisplayText('');
+            }
+          },
+
+          onerror: (e: any) => {
+            console.error('Live API Error:', e);
+            setApiError('Ошибка соединения с AI.');
+            setIsRecording(false);
+            setIsSpeaking(false);
+          },
+
+          onclose: () => {
+            setIsRecording(false);
+            setIsSpeaking(false);
+          }
+        },
+        config: {
+          responseModalities: [Modality.AUDIO],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: 'Kore' }
+            }
+          },
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
+          systemInstruction: assessmentConfig.systemInstruction || ''
+        }
+      });
+
+      liveSessionPromiseRef.current = sessionPromise;
+      liveSessionRef.current = await sessionPromise;
+    } catch (err: any) {
+      console.error('Failed to start live session:', err);
+      setApiError(err.message || 'Ошибка запуска голосовой сессии.');
+      setIsTyping(false);
+    }
+  }, []);
+
+  // -- SEND TEXT MESSAGE (via Live session or server fallback) --
   const handleSendMessage = useCallback(async (overrideText?: string) => {
     const text = (overrideText || inputValue).trim();
     if (!text || apiError) return;
     setInputValue('');
 
     setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text, timestamp: new Date() }]);
-    setIsTyping(true);
 
-    try {
-      if (voiceEnabled) {
-        // Use voice endpoint: get text + audio together
-        const response = await sendVoiceMessageToAI(text);
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: response.text, timestamp: new Date() }]);
-        setIsTyping(false);
-        // Play audio
-        if (response.audio && response.audioMimeType) {
-          playAudio(response.audio, response.audioMimeType);
-        }
-      } else {
-        // Text-only mode
+    if (liveSessionRef.current) {
+      // Send through Live API as text
+      liveSessionRef.current.sendClientContent({
+        turns: [{ role: 'user', parts: [{ text }] }],
+        turnComplete: true
+      });
+    } else {
+      // Fallback: server-side text chat
+      setIsTyping(true);
+      try {
         const responseText = await sendMessageToAI(text);
         setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: responseText, timestamp: new Date() }]);
-        setIsTyping(false);
+      } catch (error) {
+        console.error(error);
+        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: 'Произошла ошибка. Попробуйте ещё раз.', timestamp: new Date() }]);
       }
-    } catch (error) {
-      console.error(error);
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: 'Произошла ошибка. Попробуйте ещё раз.', timestamp: new Date() }]);
       setIsTyping(false);
     }
-  }, [inputValue, apiError, voiceEnabled, playAudio]);
+  }, [inputValue, apiError]);
 
+  // -- HANDLE FINISH --
   const handleFinishChat = () => {
-      navigate(`/results/${id}`, { state: { messages: messages, assessmentId: id, type: 'chat' } });
+    stopLiveSession();
+    navigate(`/results/${id}`, { state: { messages: messages, assessmentId: id, type: 'chat' } });
   };
 
-  // -- STT: microphone recording --
-  const pendingTranscript = useRef('');
-
-  const startRecording = useCallback(() => {
-    if (!hasSpeechRecognition) return;
-    stopSpeaking();
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
-
-    const recognition = new SR();
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = 'ru-RU';
-
-    recognition.onstart = () => {
-      setIsRecording(true);
-      pendingTranscript.current = '';
-    };
-
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
-      let transcript = '';
-      let isFinal = false;
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        transcript += e.results[i][0].transcript;
-        if (e.results[i].isFinal) isFinal = true;
+  // -- TOGGLE VOICE (mute/unmute mic + stop audio) --
+  const toggleVoice = useCallback(() => {
+    setVoiceEnabled(v => {
+      if (v) {
+        // Turning off: stop audio playback
+        stopSpeaking();
       }
-      setInputValue(transcript);
-      if (isFinal) {
-        pendingTranscript.current = transcript;
+      return !v;
+    });
+  }, [stopSpeaking]);
+
+  // -- INIT --
+  useEffect(() => {
+    const init = async () => {
+      if (!id) return;
+      const data = getAssessmentById(id);
+      if (!data) return;
+      setAssessment(data);
+
+      if (data.type === 'chat') {
+        // Try Live API first
+        await startLiveSession(data);
+
+        // If Live API failed (apiError will be set), set up initial message for display
+        // The initial message from Live API comes as AI-spoken greeting
       }
     };
-
-    recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', e.error);
-      setIsRecording(false);
-    };
-
-    recognition.onend = () => {
-      setIsRecording(false);
-      recognitionRef.current = null;
-      // Auto-send when speech ends
-      const finalText = pendingTranscript.current.trim();
-      if (finalText) {
-        setInputValue('');
-        handleSendMessage(finalText);
-      }
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-  }, [hasSpeechRecognition, stopSpeaking, handleSendMessage]);
-
-  const stopRecording = useCallback(() => {
-    recognitionRef.current?.stop();
-  }, []);
-
-  const toggleRecording = useCallback(() => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  }, [isRecording, startRecording, stopRecording]);
+    init();
+  }, [id]);
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      recognitionRef.current?.abort();
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
+    return () => { stopLiveSession(); };
+  }, [stopLiveSession]);
 
   // -- QUIZ HANDLERS --
   const handleQuizAnswer = (value: number | string, category: string) => {
@@ -359,11 +469,11 @@ export const Assessment: React.FC = () => {
   // --- RENDER CHAT (VOICE ASSISTANT) INTERFACE ---
   if (assessment.type === 'chat') {
     // Determine status text
-    const statusText = isRecording ? 'Слушаю вас…'
-      : isTyping ? 'Думаю…'
+    const statusText = isTyping ? 'Подключение…'
       : isSpeaking ? 'Говорю…'
+      : isRecording ? (voiceEnabled ? 'Слушаю вас…' : 'Микрофон выкл')
       : apiError ? 'Не подключено'
-      : 'Нажмите на микрофон';
+      : 'Подключение…';
 
     // Last AI message for subtitle
     const lastAiMsg = [...messages].reverse().find(m => m.role === 'model');
@@ -380,7 +490,7 @@ export const Assessment: React.FC = () => {
           <div className="text-center">
             <h1 className="text-sm font-semibold text-white/80">{assessment.title}</h1>
             <div className="flex items-center justify-center gap-1.5 mt-0.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${apiError ? 'bg-red-500' : isRecording ? 'bg-red-500 animate-pulse' : isSpeaking ? 'bg-purple-500 animate-pulse' : isTyping ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`}></span>
+              <span className={`w-1.5 h-1.5 rounded-full ${apiError ? 'bg-red-500' : isTyping ? 'bg-yellow-500 animate-pulse' : isSpeaking ? 'bg-purple-500 animate-pulse' : isRecording ? 'bg-green-500 animate-pulse' : 'bg-yellow-500 animate-pulse'}`}></span>
               <span className="text-[10px] text-slate-400">{statusText}</span>
             </div>
           </div>
@@ -412,21 +522,21 @@ export const Assessment: React.FC = () => {
 
           {/* Transcript / subtitle area */}
           <div className="w-full max-w-md text-center space-y-3 min-h-[80px]">
-            {/* Show what user said */}
-            {isRecording && inputValue && (
+            {/* Show live user transcription */}
+            {inputValue && isRecording && (
               <p className="text-white/90 text-base animate-pulse">
                 "{inputValue}"
               </p>
             )}
 
-            {/* Show user's last message after sending */}
-            {!isRecording && lastUserMsg && !isTyping && !isSpeaking && (
+            {/* Show user's last message after turn */}
+            {!isRecording && !isSpeaking && !isTyping && lastUserMsg && !inputValue && (
               <p className="text-slate-500 text-sm">
                 Вы: {lastUserMsg.text.length > 80 ? lastUserMsg.text.slice(0, 80) + '…' : lastUserMsg.text}
               </p>
             )}
 
-            {/* Thinking dots */}
+            {/* Thinking dots (connecting) */}
             {isTyping && (
               <div className="flex items-center justify-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-yellow-400/60 typing-dot"></div>
@@ -435,10 +545,14 @@ export const Assessment: React.FC = () => {
               </div>
             )}
 
-            {/* AI response subtitle */}
-            {!isTyping && lastAiMsg && (
+            {/* AI response subtitle (live streaming or last message) */}
+            {!isTyping && (aiDisplayText || lastAiMsg) && (
               <p className={`text-slate-300 text-sm leading-relaxed transition-opacity duration-500 ${isSpeaking ? 'opacity-100' : 'opacity-70'}`}>
-                {lastAiMsg.text.length > 200 ? lastAiMsg.text.slice(0, 200) + '…' : lastAiMsg.text}
+                {aiDisplayText
+                  ? (aiDisplayText.length > 200 ? aiDisplayText.slice(-200) : aiDisplayText)
+                  : lastAiMsg
+                    ? (lastAiMsg.text.length > 200 ? lastAiMsg.text.slice(0, 200) + '…' : lastAiMsg.text)
+                    : ''}
               </p>
             )}
           </div>
@@ -447,13 +561,13 @@ export const Assessment: React.FC = () => {
         {/* Bottom: Controls */}
         <footer className="flex-none pb-8 pt-4 px-6">
           <div className="flex flex-col items-center gap-4">
-            {/* Mic button */}
+            {/* Mic button — visual indicator / interrupt */}
             <div className="relative">
-              {/* Pulse rings when recording */}
-              {isRecording && (
+              {/* Pulse rings when recording & listening */}
+              {isRecording && voiceEnabled && !isSpeaking && (
                 <>
-                  <div className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" style={{ animationDuration: '1.5s' }}></div>
-                  <div className="absolute -inset-3 rounded-full border-2 border-red-500/30 animate-ping" style={{ animationDuration: '2s' }}></div>
+                  <div className="absolute inset-0 rounded-full bg-green-500/20 animate-ping" style={{ animationDuration: '1.5s' }}></div>
+                  <div className="absolute -inset-3 rounded-full border-2 border-green-500/30 animate-ping" style={{ animationDuration: '2s' }}></div>
                 </>
               )}
               {isSpeaking && (
@@ -464,34 +578,30 @@ export const Assessment: React.FC = () => {
                 onClick={() => {
                   if (isSpeaking) {
                     stopSpeaking();
-                  } else if (isTyping) {
-                    // Can't interact while thinking
-                  } else {
-                    toggleRecording();
                   }
                 }}
                 disabled={!!apiError || isTyping}
                 className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl ${
-                  isRecording
-                    ? 'bg-red-500 text-white scale-110 shadow-red-500/40'
-                    : isSpeaking
-                      ? 'bg-purple-600 text-white shadow-purple-500/30'
+                  isSpeaking
+                    ? 'bg-purple-600 text-white shadow-purple-500/30 hover:scale-105 active:scale-95'
+                    : isRecording && voiceEnabled
+                      ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-green-500/30'
                       : isTyping
                         ? 'bg-slate-700 text-slate-400 cursor-wait'
                         : apiError
                           ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                          : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:scale-105 hover:shadow-blue-500/40 active:scale-95'
+                          : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
                 }`}
               >
                 <span className="material-symbols-outlined text-3xl">
-                  {isRecording ? 'stop' : isSpeaking ? 'volume_up' : 'mic'}
+                  {isSpeaking ? 'volume_up' : isRecording && voiceEnabled ? 'mic' : isTyping ? 'hourglass_top' : 'mic_off'}
                 </span>
               </button>
             </div>
 
             {/* Secondary controls */}
             <div className="flex items-center gap-6">
-              {/* Text input toggle */}
+              {/* Text input */}
               <button
                 onClick={() => {
                   const text = prompt('Введите текст:');
@@ -506,13 +616,13 @@ export const Assessment: React.FC = () => {
                 <span className="text-[10px]">Текст</span>
               </button>
 
-              {/* Volume toggle */}
+              {/* Volume/mic toggle */}
               <button
-                onClick={() => { setVoiceEnabled(v => { if (v) stopSpeaking(); return !v; }); }}
+                onClick={toggleVoice}
                 className={`flex flex-col items-center gap-1 transition-colors ${voiceEnabled ? 'text-blue-400 hover:text-blue-300' : 'text-slate-600 hover:text-slate-400'}`}
               >
-                <span className="material-symbols-outlined text-xl">{voiceEnabled ? 'volume_up' : 'volume_off'}</span>
-                <span className="text-[10px]">{voiceEnabled ? 'Звук вкл' : 'Звук выкл'}</span>
+                <span className="material-symbols-outlined text-xl">{voiceEnabled ? 'mic' : 'mic_off'}</span>
+                <span className="text-[10px]">{voiceEnabled ? 'Микрофон вкл' : 'Микрофон выкл'}</span>
               </button>
 
               {/* Finish */}
