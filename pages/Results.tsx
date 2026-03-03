@@ -63,6 +63,7 @@ export const Results: React.FC = () => {
   const [assessmentTitle, setAssessmentTitle] = useState(t('results.title'));
   const [saved, setSaved] = useState(false);
   const [isCareerType, setIsCareerType] = useState(true);
+  const [isStateType, setIsStateType] = useState(false);
   const savedRef = useRef(false);
 
   useEffect(() => {
@@ -75,6 +76,8 @@ export const Results: React.FC = () => {
             setAssessmentTitle(assessment.title);
             const careerIds = ['career-riasec', 'soft-skills-360', 'values-motivation'];
             setIsCareerType(careerIds.includes(assessment.id));
+            const stateIds = ['health-stress', 'eq-assessment'];
+            setIsStateType(stateIds.includes(assessment.id));
         }
 
         // --- PATH 0: FROM HISTORY (pre-computed) ---
@@ -236,17 +239,17 @@ export const Results: React.FC = () => {
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
                 <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-symbols-outlined text-5xl text-primary">psychology</span>
+                  <span className="material-symbols-outlined text-5xl text-primary">{isStateType ? 'monitor_heart' : 'psychology'}</span>
                 </div>
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase tracking-wider border border-primary/30">
-                  {t('results.archetype')}
+                  {isStateType ? t('results.condition') : t('results.archetype')}
                 </span>
               </div>
             </div>
           </div>
           {/* Right Content */}
           <div className="flex-1 p-6 lg:p-10 flex flex-col justify-center">
-            <h2 className="text-slate-500 dark:text-[#99b1c2] text-sm font-bold uppercase tracking-wider mb-2">{t('results.mainType')}</h2>
+            <h2 className="text-slate-500 dark:text-[#99b1c2] text-sm font-bold uppercase tracking-wider mb-2">{isStateType ? t('results.currentState') : t('results.mainType')}</h2>
             <h3 className="text-slate-900 dark:text-white text-3xl lg:text-5xl font-black leading-tight mb-4">
                 {result?.archetype}
             </h3>

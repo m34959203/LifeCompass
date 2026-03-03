@@ -146,6 +146,8 @@ export const ru: Record<string, string> = {
   'results.analysisComplete': 'Анализ завершен. Ниже представлен ваш персональный профиль.',
   'results.archetype': 'Архетип',
   'results.mainType': 'Основной тип личности',
+  'results.currentState': 'Текущее состояние',
+  'results.condition': 'Состояние',
   'results.savedToHistory': 'Сохранено в историю',
   'results.notSaved': 'Результат не сохранён.',
   'results.registerForHistory': 'Зарегистрируйтесь',

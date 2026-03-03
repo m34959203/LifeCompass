@@ -146,6 +146,8 @@ export const kk: Record<string, string> = {
   'results.analysisComplete': 'Талдау аяқталды. Төменде сіздің жеке профиліңіз ұсынылған.',
   'results.archetype': 'Архетип',
   'results.mainType': 'Негізгі тұлға типі',
+  'results.currentState': 'Ағымдағы жағдай',
+  'results.condition': 'Жағдай',
   'results.savedToHistory': 'Тарихқа сақталды',
   'results.notSaved': 'Нәтиже сақталмады.',
   'results.registerForHistory': 'Тіркеліңіз',
