@@ -290,7 +290,7 @@ export const Results: React.FC = () => {
         <div className="lg:col-span-5 flex flex-col gap-6">
             <div className="bg-white dark:bg-[#1c262e] rounded-xl p-6 border border-slate-200 dark:border-[#283843]">
                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-slate-900 dark:text-white text-xl font-bold">{t('results.competencyMap')}</h3>
+                    <h3 className="text-slate-900 dark:text-white text-xl font-bold">{isStateType ? t('results.indicatorsMap') : t('results.competencyMap')}</h3>
                 </div>
                 {chartData.length > 0 ? (
                     <RadarChart data={chartData} />
@@ -306,7 +306,7 @@ export const Results: React.FC = () => {
                         <span className="material-symbols-outlined">lightbulb</span>
                     </div>
                     <div>
-                        <h4 className="text-slate-900 dark:text-white font-bold mb-1">{t('results.strengths')}</h4>
+                        <h4 className="text-slate-900 dark:text-white font-bold mb-1">{isStateType ? t('results.resources') : t('results.strengths')}</h4>
                         <div className="flex flex-wrap gap-2 mt-2">
                             {result?.strengths?.map((str, i) => (
                                 <span key={i} className="px-2 py-1 bg-white dark:bg-[#283843] rounded text-sm text-slate-700 dark:text-slate-200 shadow-sm border border-slate-100 dark:border-slate-600">
@@ -322,7 +322,7 @@ export const Results: React.FC = () => {
         {/* Right Col: Traits */}
         <div className="lg:col-span-7 flex flex-col gap-6">
             <div className="flex justify-between items-end">
-                <h3 className="text-slate-900 dark:text-white text-2xl font-bold">{t('results.detailAnalysis')}</h3>
+                <h3 className="text-slate-900 dark:text-white text-2xl font-bold">{isStateType ? t('results.detailIndicators') : t('results.detailAnalysis')}</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
