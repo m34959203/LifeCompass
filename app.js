@@ -95,6 +95,12 @@ app.get('/api/status', (req, res) => {
   res.json({ configured: !!ai });
 });
 
+// Provide API key for client-side Gemini Live API connections
+app.get('/api/live-config', (req, res) => {
+  if (!apiKey) return res.status(503).json({ error: 'API_KEY_MISSING' });
+  res.json({ apiKey });
+});
+
 app.post('/api/chat/start', (req, res) => {
   if (!ai) return res.status(503).json({ error: 'API_KEY_MISSING' });
 
