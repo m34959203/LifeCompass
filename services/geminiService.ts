@@ -91,6 +91,33 @@ export const sendVoiceMessageToAI = async (text: string): Promise<{
 };
 
 /**
+ * Text-to-speech: sends text and gets back audio
+ */
+export const textToSpeech = async (text: string): Promise<{
+  audio: string | null;
+  mimeType: string;
+}> => {
+  try {
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+
+    if (!res.ok) throw new Error('TTS request failed');
+
+    const data = await res.json();
+    return {
+      audio: data.audio || null,
+      mimeType: data.mimeType || 'audio/wav',
+    };
+  } catch (error) {
+    console.error('TTS error:', error);
+    return { audio: null, mimeType: 'audio/wav' };
+  }
+};
+
+/**
  * Generates a structured analysis report based on quiz scores
  */
 export const generateQuizAnalysis = async (

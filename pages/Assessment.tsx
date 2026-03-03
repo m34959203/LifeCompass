@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { startChatSession, sendMessageToAI, sendVoiceMessageToAI, isApiConfigured } from '../services/geminiService';
+import { startChatSession, sendMessageToAI, sendVoiceMessageToAI, textToSpeech, isApiConfigured } from '../services/geminiService';
 import { getAssessmentById } from '../services/assessmentData';
 import { AssessmentConfig, Message, Answer } from '../types';
 
@@ -49,6 +49,7 @@ export const Assessment: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const initSpoken = useRef(false);
 
   const hasSpeechRecognition = typeof window !== 'undefined' &&
     !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -157,6 +158,20 @@ export const Assessment: React.FC = () => {
     }
     setIsSpeaking(false);
   }, []);
+
+  // -- SPEAK INITIAL MESSAGE --
+  useEffect(() => {
+    if (!assessment || assessment.type !== 'chat' || !assessment.initialMessage) return;
+    if (initSpoken.current || apiError || !voiceEnabled) return;
+    if (messages.length === 0) return; // wait until messages are set
+
+    initSpoken.current = true;
+    textToSpeech(assessment.initialMessage).then(({ audio, mimeType }) => {
+      if (audio) {
+        playAudio(audio, mimeType);
+      }
+    });
+  }, [assessment, messages, apiError, voiceEnabled, playAudio]);
 
   // -- CHAT HANDLERS --
   const handleSendMessage = useCallback(async (overrideText?: string) => {
