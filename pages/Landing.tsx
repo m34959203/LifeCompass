@@ -24,11 +24,6 @@ export const Landing: React.FC = () => {
           <h2 className="text-xl font-bold leading-tight tracking-[-0.015em]">LifeCompass Uni</h2>
         </div>
         <div className="flex flex-1 justify-end gap-8">
-          <div className="hidden md:flex items-center gap-9">
-            <button onClick={() => scrollTo('features')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">{t('landing.forApplicants')}</button>
-            <button onClick={() => scrollTo('how-it-works')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">{t('landing.forStudents')}</button>
-            <button onClick={() => scrollTo('for-universities')} className="text-slate-500 hover:text-primary transition-colors text-sm font-medium">{t('landing.forUniversities')}</button>
-          </div>
           <div className="flex items-center gap-3">
             {/* Language Switcher */}
             <button
