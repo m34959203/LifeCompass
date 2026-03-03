@@ -38,6 +38,7 @@ const distPath = path.join(__dirname, 'dist');
 // --- Gemini AI Setup ---
 const apiKey = process.env.GEMINI_API_KEY || '';
 const MODEL_ID = 'gemini-2.0-flash';
+const googleClientId = process.env.GOOGLE_CLIENT_ID || '';
 
 // Dynamic import() to support ESM-only dependencies (p-retry)
 import('@google/genai').then((genai) => {
@@ -93,6 +94,12 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/status', (req, res) => {
   res.json({ configured: !!ai });
+});
+
+// Google OAuth Client ID for client-side sign-in
+app.get('/api/google-config', (req, res) => {
+  if (!googleClientId) return res.status(503).json({ error: 'GOOGLE_CLIENT_ID_MISSING' });
+  res.json({ clientId: googleClientId });
 });
 
 // Provide API key for client-side Gemini Live API connections

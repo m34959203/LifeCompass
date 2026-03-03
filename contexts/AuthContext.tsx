@@ -14,6 +14,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (name: string, email: string, password: string, university?: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: (googleUser: { id: string; name: string; email: string }) => { success: boolean };
   logout: () => void;
   updateProfile: (updates: Partial<Pick<AuthUser, 'name' | 'university'>>) => void;
 }
@@ -24,6 +25,7 @@ interface StoredUser {
   email: string;
   passwordHash: string;
   salt: string;
+  googleId?: string;
   university?: string;
   createdAt: string;
 }
@@ -163,6 +165,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   }, []);
 
+  const loginWithGoogle = useCallback((googleUser: { id: string; name: string; email: string }) => {
+    const users = getUsers();
+
+    // Find existing user by Google ID or email
+    let found = users.find(u => u.googleId === googleUser.id)
+             || users.find(u => u.email.toLowerCase() === googleUser.email.toLowerCase());
+
+    if (found) {
+      // Link Google ID if not already linked
+      if (!found.googleId) {
+        found.googleId = googleUser.id;
+        saveUsers(users);
+      }
+      const authUser: AuthUser = { id: found.id, name: found.name, email: found.email, university: found.university };
+      setUser(authUser);
+      return { success: true };
+    }
+
+    // Auto-register new Google user
+    const id = generateId();
+    const newUser: StoredUser = {
+      id,
+      name: googleUser.name,
+      email: googleUser.email.toLowerCase(),
+      passwordHash: '',
+      salt: '',
+      googleId: googleUser.id,
+      createdAt: new Date().toISOString(),
+    };
+    saveUsers([...users, newUser]);
+
+    const authUser: AuthUser = { id, name: googleUser.name, email: googleUser.email.toLowerCase() };
+    setUser(authUser);
+    return { success: true };
+  }, []);
+
   const logout = useCallback(() => {
     setUser(null);
   }, []);
@@ -186,7 +224,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, loading, login, register, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, loading, login, register, loginWithGoogle, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
