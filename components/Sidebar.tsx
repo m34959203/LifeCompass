@@ -12,7 +12,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
-  const { t } = useTranslation();
+  const { t, lang, setLang } = useTranslation();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -101,6 +101,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </>
             )}
           </nav>
+
+          {/* Language Switcher */}
+          <div className="px-2">
+            <button
+              onClick={() => setLang(lang === 'ru' ? 'kk' : 'ru')}
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#283843] transition-all"
+            >
+              <span className="material-symbols-outlined">translate</span>
+              <p className="text-sm font-medium">{lang === 'ru' ? 'Қазақша' : 'Русский'}</p>
+              <span className="ml-auto text-xs font-bold text-slate-400 uppercase">{lang === 'ru' ? 'RU' : 'ҚАЗ'}</span>
+            </button>
+          </div>
 
           {/* Divider */}
           <div className="px-3">
