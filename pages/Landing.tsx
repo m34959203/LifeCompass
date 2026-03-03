@@ -211,68 +211,6 @@ export const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* For Universities */}
-      <section className="px-6 py-16 bg-background-light dark:bg-background-dark" id="for-universities">
-        <div className="max-w-[1200px] mx-auto">
-          <div className="flex flex-col lg:flex-row gap-10 items-center">
-            <div className="lg:w-1/2 flex flex-col gap-6">
-              <h2 className="text-primary font-bold tracking-wider uppercase text-sm">Для вузов</h2>
-              <h1 className="text-3xl md:text-4xl font-black tracking-tight">Интегрируйте диагностику в учебный процесс</h1>
-              <p className="text-slate-500 text-base leading-relaxed">
-                LifeCompass Uni помогает университетам системно оценивать профориентационную готовность абитуриентов,
-                отслеживать развитие soft skills студентов и снижать процент отчислений.
-              </p>
-              <div className="flex flex-col gap-4">
-                {[
-                  { icon: 'group', text: 'Массовая диагностика абитуриентов при поступлении' },
-                  { icon: 'monitoring', text: 'Мониторинг развития компетенций студентов' },
-                  { icon: 'psychology', text: 'Раннее выявление академического выгорания' },
-                  { icon: 'analytics', text: 'Аналитика и отчёты для деканатов' },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                      <span className="material-symbols-outlined text-lg">{item.icon}</span>
-                    </div>
-                    <span className="text-slate-700 dark:text-slate-300 text-sm">{item.text}</span>
-                  </div>
-                ))}
-              </div>
-              <a href="mailto:contact@lifecompass.uni" className="inline-flex items-center gap-2 mt-2 px-6 py-3 rounded-xl bg-primary hover:bg-blue-600 text-white font-bold transition-colors shadow-lg shadow-primary/30 w-fit">
-                <span className="material-symbols-outlined text-lg">mail</span>
-                Связаться с нами
-              </a>
-            </div>
-            <div className="lg:w-1/2 w-full">
-              <div className="bg-white dark:bg-[#1e272e] rounded-2xl border border-slate-200 dark:border-slate-700 p-8 shadow-lg">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-2xl">apartment</span>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg">Тариф для университетов</h3>
-                    <p className="text-slate-500 text-sm">Индивидуальные условия</p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  {[
-                    'Неограниченное число студентов',
-                    'Панель администратора для преподавателей',
-                    'Групповая аналитика и экспорт отчётов',
-                    'Интеграция с LMS (Moodle, Canvas)',
-                    'Приоритетная техническая поддержка',
-                  ].map((feature, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-lg text-emerald-500">check_circle</span>
-                      <span className="text-slate-700 dark:text-slate-300 text-sm">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="bg-white dark:bg-[#131b20] border-t border-slate-200 dark:border-[#283843] py-12 px-6">
         <div className="max-w-[1200px] mx-auto">
