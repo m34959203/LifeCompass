@@ -160,7 +160,7 @@ export const Results: React.FC = () => {
           <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#131b20]">
               <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-primary animate-spin mb-4"></div>
               <p className="text-slate-500 animate-pulse text-center">
-                  ИИ анализирует ваши ответы...<br/>
+                  {t('results.analyzing')}<br/>
                   <span className="text-xs">{t('results.analyzingSub')}</span>
               </p>
           </div>
@@ -182,7 +182,7 @@ export const Results: React.FC = () => {
             {assessmentTitle}
         </h1>
         <p className="text-slate-500 dark:text-[#99b1c2] text-base font-normal max-w-2xl">
-            Анализ завершен. Ниже представлен ваш персональный профиль.
+            {t('results.analysisComplete')}
         </p>
       </div>
 
@@ -197,7 +197,7 @@ export const Results: React.FC = () => {
                   <span className="material-symbols-outlined text-5xl text-primary">psychology</span>
                 </div>
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase tracking-wider border border-primary/30">
-                  Архетип
+                  {t('results.archetype')}
                 </span>
               </div>
             </div>
@@ -223,7 +223,7 @@ export const Results: React.FC = () => {
                 {saved && (
                   <span className="flex items-center gap-1 text-emerald-500 text-sm font-medium">
                     <span className="material-symbols-outlined text-lg">check_circle</span>
-                    Сохранено в историю
+                    {t('results.savedToHistory')}
                   </span>
                 )}
             </div>

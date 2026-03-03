@@ -291,9 +291,9 @@ app.post('/api/analyze/quiz', async (req, res) => {
 
       Task:
       1. Identify the dominant personality archetype.
-      2. Write a psychological summary (addressing the user as "Вы").
-      3. Suggest 3 specific career paths/roles.
-      4. List 2 key strengths.
+      2. Write a detailed psychological summary (addressing the user as "Вы") with specific observations about each high/low score.
+      3. Suggest 3 specific career paths/roles with brief justification.
+      4. List 3 key strengths.
 
       Language: Russian.
     `;
@@ -356,12 +356,19 @@ app.post('/api/analyze/chat', async (req, res) => {
       ${transcript}
 
       Task:
-      1. Evaluate the User's responses.
+      1. Evaluate the User's responses thoroughly.
       2. Estimate scores (0-100) for 5-6 relevant traits/categories based on the assessment type.
-      3. Identify the dominant archetype.
-      4. Write a professional summary (addressing the user as "Вы").
-      5. Suggest 3 career paths.
-      6. List 2 key strengths.
+      3. Identify the dominant archetype or profile type.
+      4. Write a detailed professional summary (addressing the user as "Вы"), including:
+         - Specific observations from the conversation
+         - Current state/level assessment with concrete indicators
+         - Personalized recommendations (at least 3 specific techniques or actions)
+      5. Suggest 3 specific career paths or development directions.
+      6. List 3 key strengths identified from the conversation.
+
+      IMPORTANT: The summary must contain concrete, specific feedback based on what the user actually said. Avoid generic advice. If this is a stress/burnout assessment, clearly state the estimated stress level (low/moderate/high/critical) and specific burnout indicators found.
+
+      Note: The transcript may contain speech recognition artifacts or incomplete words — interpret the meaning from context.
 
       Language: Russian.
     `;
